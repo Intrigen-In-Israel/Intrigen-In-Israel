@@ -1,0 +1,13 @@
+{
+    "id": "./",
+    "name": "Intrigen In Israel",
+    "short_name": "Intrigen",
+    "description": "Eine offlinefähige Web-App.",
+    "lang": "de",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#f5f5f5",
+    "theme_color": "#202020"
+}
