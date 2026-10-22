@@ -1,3 +1,4 @@
+
 {
     "id": "./",
     "name": "Intrigen In Israel",
@@ -9,5 +10,19 @@
     "display": "standalone",
     "orientation": "any",
     "background_color": "#f5f5f5",
-    "theme_color": "#202020"
+    "theme_color": "#202020",
+    "icons": [
+        {
+            "src": "./images/app-icon.png",
+            "sizes": "1254x1254",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "./images/app-icon-maskable.png",
+            "sizes": "1254x1254",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
 }

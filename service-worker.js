@@ -1,11 +1,14 @@
-const CACHE_NAME = "intrigen-in-israel-v1";
+
+const CACHE_NAME = "intrigen-in-israel-v3";
 
 const APP_FILES = [
     "./",
     "./index.html",
     "./styles.css",
     "./app.js",
-    "./manifest.json"
+    "./manifest.json",
+    "./images/app-icon.png",
+    "./images/app-icon-maskable.png"
 ];
 
 self.addEventListener("install", (event) => {
