@@ -1,26 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#202020">
-
-    <title>Intrigen In Israel</title>
-
-    <link rel="manifest" href="./manifest.json">
-    <link rel="stylesheet" href="./styles.css">
-
-    <meta name="description" content="Eine offlinefähige Web-App.">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#202020">
+  <meta name="description" content="Eine offlinefähige Web-App zur Spielleitung von Intrigen in Israel.">
+  <title>Intrigen In Israel</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-    <header>
-        <h1>Intrigen In Israel</h1>
-    </header>
-
-    <main>
-        <p>Die App wurde erfolgreich gestartet.</p>
-    </main>
-
-    <script src="./app.js"></script>
+  <header class="site-header">
+    <h1>Intrigen In Israel</h1>
+    <p>Digitale Unterstützung für die Spielleitung</p>
+  </header>
+  <main id="app" class="app" aria-live="polite">
+    <p>Die App wird geladen …</p>
+  </main>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

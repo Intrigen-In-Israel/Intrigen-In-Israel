@@ -1,28 +1,15 @@
-
 {
-    "id": "./",
-    "name": "Intrigen In Israel",
-    "short_name": "Intrigen",
-    "description": "Eine offlinefähige Web-App.",
-    "lang": "de",
-    "start_url": "./",
-    "scope": "./",
-    "display": "standalone",
-    "orientation": "any",
-    "background_color": "#f5f5f5",
-    "theme_color": "#202020",
-    "icons": [
-        {
-            "src": "./images/app-icon.png",
-            "sizes": "1254x1254",
-            "type": "image/png",
-            "purpose": "any"
-        },
-        {
-            "src": "./images/app-icon-maskable.png",
-            "sizes": "1254x1254",
-            "type": "image/png",
-            "purpose": "maskable"
-        }
-    ]
+  "name": "Intrigen In Israel",
+  "short_name": "Intrigen",
+  "description": "Eine offlinefähige Web-App zur Spielleitung von Intrigen in Israel.",
+  "lang": "de",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f4f4",
+  "theme_color": "#202020",
+  "icons": [
+    { "src": "./images/app-icon.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any" },
+    { "src": "./images/app-icon-maskable.png", "sizes": "1254x1254", "type": "image/png", "purpose": "maskable" }
+  ]
 }
