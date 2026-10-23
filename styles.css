@@ -11,7 +11,7 @@ h2, h3 { margin-top: 0; }
 .row { display: flex; align-items: center; gap: .5rem; }
 .row > input { flex: 1; min-width: 0; }
 input, select, button { font: inherit; }
-input[type="text"], input[type="number"], select { width: 100%; min-height: 2.7rem; border: 1px solid #aaa; border-radius: 7px; padding: .55rem .65rem; background: #fff; }
+input[type="text"], input[type="search"], input[type="number"], select { width: 100%; min-height: 2.7rem; border: 1px solid #aaa; border-radius: 7px; padding: .55rem .65rem; background: #fff; }
 button { border: 0; border-radius: 7px; padding: .7rem .95rem; background: #263b55; color: white; cursor: pointer; }
 button:hover { background: #18283a; }
 button:disabled { opacity: .45; cursor: not-allowed; }
@@ -40,3 +40,9 @@ button.danger { background: #8c2929; }
 .character-choice { display: flex; flex-direction: column; gap: 0.35rem; cursor: pointer; }
 .character-choice-heading { display: flex; align-items: center; gap: 0.55rem; }
 .character-choice-heading input { width: auto; margin: 0; }
+
+/* Rollen, die bereits einem anderen Spieler zugewiesen sind, werden sichtbar ausgegraut. */
+select option:disabled, select option.rolle-vergeben {
+  color: #777;
+  background-color: #e5e5e5;
+}

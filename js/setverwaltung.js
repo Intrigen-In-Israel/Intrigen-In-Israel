@@ -12,11 +12,10 @@ export function setAuswaehlen(setId) {
   if (new Set(set.rollen).size !== set.rollen.length) {
     return { ok: false, meldung: "Dieses Set enthält einen Charakter mehrfach. Jeder konkrete Charakter darf nur einmal vorkommen." };
   }
-  if (set.rollen.some((id) => !CHARAKTERE.some((charakter) => charakter.id === id))) {
+  if (set.rollen.some((id) => !CHARAKTERE.some((charakter) => charakter.name === id))) {
     return { ok: false, meldung: "Dieses Set enthält einen unbekannten Charakter." };
   }
   spielzustand.ausgewaehltesSet = { ...set, rollen: [...set.rollen] };
-  spielzustand.eigeneRollen = [];
   spielzustand.meldung = "";
   return { ok: true, meldung: "Set ausgewählt." };
 }
@@ -27,8 +26,8 @@ export function setAuswaehlen(setId) {
 export function eigenesSetSpeichern(auswahl) {
   const rollen = [];
   for (const charakter of CHARAKTERE) {
-    const gewaehlt = auswahl[charakter.id] === true || auswahl[charakter.id] === "on" || auswahl[charakter.id] === "1";
-    if (gewaehlt) rollen.push(charakter.id);
+    const gewaehlt = auswahl[charakter.name] === true || auswahl[charakter.name] === "on" || auswahl[charakter.name] === "1";
+    if (gewaehlt) rollen.push(charakter.name);
   }
 
   if (rollen.length !== spielzustand.spieler.length) {
@@ -44,7 +43,6 @@ export function eigenesSetSpeichern(auswahl) {
     spielerAnzahl: spielzustand.spieler.length,
     rollen
   };
-  spielzustand.eigeneRollen = [];
   spielzustand.meldung = "Eigenes Set übernommen. Jeder Charakter kommt höchstens einmal vor.";
   return { ok: true, meldung: spielzustand.meldung };
 }

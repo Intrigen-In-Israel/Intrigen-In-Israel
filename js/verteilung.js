@@ -1,67 +1,63 @@
-import { CHARAKTERE, charakterNachId } from "../data/charaktere.js";
+import { CHARAKTERE, charakterNachName } from "../data/charaktere.js";
 import { spielzustand } from "./spielzustand.js";
 
-/* Baut die aktiven Rollengruppen auf. Gleiche Charaktere werden zusammengefasst. */
 export function rollengruppen() {
   if (!spielzustand.ausgewaehltesSet) return [];
-  const anzahlJeCharakter = new Map();
-  for (const id of spielzustand.ausgewaehltesSet.rollen) {
-    anzahlJeCharakter.set(id, (anzahlJeCharakter.get(id) ?? 0) + 1);
-  }
-  return [...anzahlJeCharakter.entries()]
-    .map(([id, anzahl]) => ({ charakter: charakterNachId(id), anzahl }))
-    .filter((eintrag) => eintrag.charakter)
-    .sort((a, b) => a.charakter.prioritaet - b.charakter.prioritaet);
+  return spielzustand.ausgewaehltesSet.rollen
+    .map(name => ({ charakter: charakterNachName(name), anzahl: 1 }))
+    .filter(x => x.charakter)
+    .sort((a, b) => a.charakter.prioritaet - b.charakter.prioritaet || a.charakter.name.localeCompare(b.charakter.name, "de"));
 }
 
-export function prioritaetsgruppen() {
-  const gruppen = rollengruppen();
-  return [...new Set(gruppen.map((g) => g.charakter.prioritaet))].sort((a, b) => a - b);
+export function nachtCharaktere() {
+  return rollengruppen().filter(g => g.charakter.wachtAuf).map(g => g.charakter);
 }
 
 export function spielVerteilenStarten() {
   if (!spielzustand.ausgewaehltesSet) return { ok: false, meldung: "Bitte wähle zuerst ein Set aus." };
-  if (spielzustand.ausgewaehltesSet.rollen.length !== spielzustand.spieler.length) {
-    return { ok: false, meldung: "Die Anzahl der Charaktere muss der Anzahl der Spieler entsprechen." };
-  }
-  if (new Set(spielzustand.ausgewaehltesSet.rollen).size !== spielzustand.ausgewaehltesSet.rollen.length) {
-    return { ok: false, meldung: "Ein Charakter ist mehrfach im Set. Jeder konkrete Charakter darf nur einmal vorkommen." };
-  }
-  spielzustand.spieler.forEach((spieler) => { spieler.rolle = null; });
-  spielzustand.aktuellePrioritaet = prioritaetsgruppen()[0] ?? null;
-  spielzustand.aktuellerBildschirm = "verteilung";
+  if (spielzustand.ausgewaehltesSet.rollen.length !== spielzustand.spieler.length) return { ok: false, meldung: "Die Anzahl der Charaktere muss der Anzahl der Spieler entsprechen." };
+  if (new Set(spielzustand.ausgewaehltesSet.rollen).size !== spielzustand.ausgewaehltesSet.rollen.length) return { ok: false, meldung: "Jeder konkrete Charakter darf nur einmal vorkommen." };
+  spielzustand.spieler.forEach(p => { p.rolle = null; p.verliebtMit = []; p.lebt = true; p.istAmLeben = true; });
+  spielzustand.unbekannteZuordnungen = [];
+  spielzustand.unbekannteSpieler = [];
+  spielzustand.nachtAktionen = {};
+  spielzustand.nachtCharaktere = nachtCharaktere().map(c => c.name);
+  spielzustand.nachtIndex = 0;
+  spielzustand.nachtZuordnungen = {};
+  spielzustand.verbrauchteNachtCharaktere = [];
+  spielzustand.nachtPhase = "namen";
+  spielzustand.aktuellePrioritaet = spielzustand.nachtCharaktere.length ? charakterNachName(spielzustand.nachtCharaktere[0]).prioritaet : 18;
+  spielzustand.aktuellerBildschirm = spielzustand.nachtCharaktere.length ? "verteilung" : "tagzuordnung";
   spielzustand.meldung = "";
   return { ok: true, meldung: "" };
 }
 
-/* Speichert eine Zuordnung pro Charaktertyp. Ein Charakter kann mehrfach vergeben werden,
-   jedoch höchstens so oft, wie er im gewählten Set enthalten ist. */
-export function rollenZuordnen(zuordnungen) {
-  const gruppen = rollengruppen().filter((g) => g.charakter.prioritaet === spielzustand.aktuellePrioritaet);
-  const alleIds = new Set();
-  for (const gruppe of gruppen) {
-    const ids = zuordnungen[gruppe.charakter.id] ?? [];
-    if (ids.length !== gruppe.anzahl) {
-      return { ok: false, meldung: `Für ${gruppe.charakter.name} müssen genau ${gruppe.anzahl} Spieler ausgewählt sein.` };
-    }
-    for (const id of ids) {
-      if (!spielzustand.spieler.some((p) => p.id === id)) return { ok: false, meldung: "Ein ausgewählter Spieler wurde nicht gefunden." };
-      if (alleIds.has(id)) return { ok: false, meldung: "Ein Spieler kann nicht mehreren Rollen zugeordnet werden." };
-      alleIds.add(id);
-    }
-  }
-
-  // Bereits verteilte Spieler dieser Priorität werden aktualisiert.
-  for (const spieler of spielzustand.spieler) {
-    if (spieler.rolle && spieler.rolle.prioritaet === spielzustand.aktuellePrioritaet) spieler.rolle = null;
-  }
-  for (const gruppe of gruppen) {
-    for (const id of (zuordnungen[gruppe.charakter.id] ?? [])) {
-      const spieler = spielzustand.spieler.find((p) => p.id === id);
-      spieler.rolle = gruppe.charakter;
-    }
-  }
-  return { ok: true, meldung: "Rollen dieser Priorität wurden zugeordnet." };
+export function aktuelleNamen() {
+  const c = charakterNachName(spielzustand.nachtCharaktere[spielzustand.nachtIndex]);
+  if (!c) return [];
+  return spielzustand.nachtCharaktere.slice(spielzustand.nachtIndex).filter(name => charakterNachName(name)?.prioritaet === c.prioritaet);
 }
 
-export function alleCharaktere() { return CHARAKTERE; }
+export function tagCharaktereZuordnen(zuordnungen) {
+  const offene = rollengruppen().filter(({ charakter }) => !charakter.wachtAuf && !spielzustand.spieler.some(p => p.rolle?.name === charakter.name));
+  const normal = [], unbekannt = [];
+  for (const g of offene) {
+    const id = zuordnungen[g.charakter.name];
+    if (!id) return { ok: false, meldung: `Bitte ordne ${g.charakter.name} zu oder wähle „Unbekannt“.` };
+    if (id === "__unbekannt__") unbekannt.push(g.charakter.name);
+    else normal.push({ name: g.charakter.name, id });
+  }
+  const used = new Set();
+  for (const x of normal) {
+    if (!spielzustand.spieler.some(p => p.id === x.id) || used.has(x.id) || spielzustand.spieler.some(p => p.id === x.id && p.rolle)) return { ok: false, meldung: "Ein Spieler kann nicht mehreren Rollen zugeordnet werden." };
+    used.add(x.id);
+  }
+  const rest = spielzustand.spieler.filter(p => !p.rolle && !normal.some(x => x.id === p.id));
+  if (unbekannt.length === 1 && rest.length === 1) { normal.push({ name: unbekannt[0], id: rest[0].id }); unbekannt.length = 0; }
+  for (const x of normal) spielzustand.spieler.find(p => p.id === x.id).rolle = { ...charakterNachName(x.name) };
+  spielzustand.unbekannteZuordnungen = unbekannt;
+  spielzustand.unbekannteSpieler = spielzustand.spieler.filter(p => !p.rolle).map(p => p.id);
+  spielzustand.aktuellerBildschirm = "fertig";
+  spielzustand.meldung = unbekannt.length ? "Die unbekannte Zuordnung bleibt offen, da mehrere Möglichkeiten bestehen." : "Alle Charaktere wurden zugeordnet.";
+  return { ok: true, meldung: spielzustand.meldung };
+}

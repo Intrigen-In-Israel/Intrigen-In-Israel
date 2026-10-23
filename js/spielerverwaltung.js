@@ -24,5 +24,4 @@ export function spielerHinzufuegen(name) {
 export function spielerEntfernen(id) {
   spielzustand.spieler = spielzustand.spieler.filter((spieler) => spieler.id !== id);
   spielzustand.ausgewaehltesSet = null;
-  spielzustand.eigeneRollen = [];
 }

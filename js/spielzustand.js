@@ -2,12 +2,17 @@
 export const spielzustand = {
   spieler: [],
   ausgewaehltesSet: null,
-  eigeneRollen: [],
+  unbekannteZuordnungen: [],
   aktuellePrioritaet: null,
+  nachtCharaktere: [],
+  nachtIndex: 0,
+  nachtPhase: "namen",
+  nachtZuordnungen: {},
+  verbrauchteNachtCharaktere: [],
+  nachtAktionen: {},
+  poetLetzterSpieler: null,
+  unbekannteSpieler: [],
   aktuellerBildschirm: "spieler",
   meldung: ""
 };
 
-export function setMeldung(text) {
-  spielzustand.meldung = text;
-}
