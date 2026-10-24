@@ -1,4 +1,4 @@
-import { spielzustand } from "./spielzustand.js";
+import { spielzustand, protokollieren, spielstandSpeichern, spielstandLaden } from "./spielzustand.js";
 import { spielerHinzufuegen, spielerEntfernen } from "./spielerverwaltung.js";
 import { alleSets, empfohlenesSet, setAuswaehlen, eigenesSetSpeichern } from "./setverwaltung.js";
 import { spielVerteilenStarten, tagCharaktereZuordnen, aktuelleNamen } from "./verteilung.js";
@@ -178,9 +178,14 @@ function buergermeisterBildschirm() {
   const lebende = spielzustand.spieler.filter(p=>p.istAmLeben);
   return `<section class="panel"><h2>Bürgermeister eintragen</h2><p>Trage den vom Spielleiter mitgeteilten, tatsächlich gewählten lebenden Spieler ein. Ist der bisherige Bürgermeister gestorben, wird hier sein Nachfolger eingetragen.</p><form id="buergermeister-form"><label for="buergermeister-nachfolger">Nachfolger</label><select id="buergermeister-nachfolger" required><option value="">Bitte auswählen …</option>${lebende.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select><div class="button-row"><button type="submit">Nachfolger bestätigen</button></div></form>${meldungHtml()}</section>`;
 }
+function spielprotokollHtml() {
+  const eintraege = spielzustand.protokoll || [];
+  if (!eintraege.length) return '<p class="muted">Es wurden keine Protokolleinträge gespeichert.</p>';
+  return `<div class="game-log">${eintraege.map(e => `<p><strong>Runde ${Number(e.runde || 1)} · ${escapeHtml(e.phase || "Spiel")}</strong> — ${escapeHtml(e.text)}</p>`).join("")}</div>`;
+}
 function spielendeBildschirm() {
   const ende = spielzustand.spielende || siegPruefen();
-  return `<section class="panel"><h2>Spiel beendet</h2><p><strong>Sieger: ${escapeHtml(ende.sieger || "")}</strong></p><p>${escapeHtml(ende.grund || "")}</p>${todesberichtHtml()}<h3>Spielerstatus</h3><ul class="player-list">${spielzustand.spieler.map(p=>`<li class="${p.istAmLeben ? "" : "dead-player"}"><span>${escapeHtml(p.name)}${p.istAmLeben ? "" : " (tot)"}</span><strong>${escapeHtml(p.rolle?.name || "Rolle unbekannt")}</strong></li>`).join("")}</ul><div class="button-row"><button data-action="weitere-runde">Weitere Runde mit diesem Set</button><button class="secondary" data-action="spiel-zuruecksetzen">Neues Spiel</button></div></section>`;
+  return `<section class="panel"><h2>Spiel beendet</h2><p><strong>Sieger: ${escapeHtml(ende.sieger || "")}</strong></p><p>${escapeHtml(ende.grund || "")}</p>${todesberichtHtml()}<h3>Spielerstatus</h3><ul class="player-list">${spielzustand.spieler.map(p=>`<li class="${p.istAmLeben ? "" : "dead-player"}"><span>${escapeHtml(p.name)}${p.istAmLeben ? "" : " (tot)"}</span><strong>${escapeHtml(p.rolle?.name || "Rolle unbekannt")}</strong></li>`).join("")}</ul><h3>Spielprotokoll</h3>${spielprotokollHtml()}<div class="button-row"><button data-action="weitere-runde">Weitere Runde mit diesem Set</button><button class="secondary" data-action="spiel-zuruecksetzen">Neues Spiel</button></div></section>`;
 }
 
 function render() {
@@ -198,6 +203,7 @@ function render() {
     spielende: spielendeBildschirm
   }[spielzustand.aktuellerBildschirm] ?? spielerBildschirm;
   app.innerHTML = ansicht() + rundenFusszeile();
+  spielstandSpeichern();
   const summe = document.querySelector("#rollen-summe");
   const eigenesForm = document.querySelector("#eigenes-set-form");
   if (summe && eigenesForm) {
@@ -219,6 +225,7 @@ app.addEventListener("submit", (event) => {
     if (!opfer) { spielzustand.meldung = "Wähle eine lebende, von Salomo inspirierte Person aus oder lasse das Feld leer."; render(); return; }
     const salomo = spielzustand.spieler.find(p => p.rolle?.name === "Salomo" && p.rolle?.hatInspiriert === id);
     if (!salomo) { spielzustand.meldung = "Diese Person ist aktuell nicht als von Salomo inspiriert vermerkt."; render(); return; }
+    protokollieren(`${opfer.name} hält die Reimregel von Salomo nicht ein. Der Tod wird ausgelöst.`, "Tag");
     spielerUndVerliebteToeten([id], "Salomo");
     spielzustand.reimFehlerIds = (spielzustand.reimFehlerIds || []).filter(x => x !== id);
     spielzustand.meldung = `${opfer.name} ist wegen nicht eingehaltener Reimregel gestorben.`;
@@ -234,6 +241,7 @@ app.addEventListener("submit", (event) => {
     const opfer = spielzustand.spieler.find(p => p.id === id && p.istAmLeben);
     if (!opfer) { spielzustand.meldung = "Bitte wähle einen lebenden Spieler aus."; render(); return; }
     const istDorfdepp = opfer.rolle?.rolle === "Dorfdepp" || opfer.rolle?.name === "Jona";
+    protokollieren(`${opfer.name} wird vom Spielleiter zur Hinrichtung bestimmt.`, "Tag");
     todesfallHinzufuegen(opfer, "Hinrichtung");
     spielerUndVerliebteToeten([opfer.id], "Verliebt");
     spielzustand.nachtAktionen.tagHinrichtungErledigt = true;
@@ -246,6 +254,7 @@ app.addEventListener("submit", (event) => {
   if (event.target.id === "tag-simson-form") {
     const ids = [event.target.querySelector("#tag-simson-1")?.value, event.target.querySelector("#tag-simson-2")?.value].filter(Boolean);
     if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => !spielzustand.spieler.some(p=>p.id===id&&p.istAmLeben&&p.rolle?.name!=="Simson"))) { spielzustand.meldung = "Wähle mindestens eine und höchstens zwei unterschiedliche lebende Personen."; render(); return; }
+    protokollieren(`Simson nimmt ${ids.map(id => spielzustand.spieler.find(p => p.id === id)?.name || "unbekannt").join(" und ")} mit in den Tod.`, spielzustand.aktuellerBildschirm === "tagphase" ? "Tag" : "Nacht");
     spielerUndVerliebteToeten(ids, "Simson");
     spielzustand.nachtAktionen.simsonFolgetodeErledigt = true;
     spielzustand.simsonFolgedeutErledigt = true;
@@ -256,6 +265,7 @@ app.addEventListener("submit", (event) => {
     const id = event.target.querySelector("#buergermeister-nachfolger")?.value;
     const next = spielzustand.spieler.find(p=>p.id===id&&p.istAmLeben);
     if (!next) { spielzustand.meldung = "Der Nachfolger muss leben."; render(); return; }
+    protokollieren(`${next.name} wird vom Spielleiter als Bürgermeister eingetragen.`, "Tag");
     spielzustand.spieler.forEach(p=>p.istBuergermeister=false); next.istBuergermeister=true;
     spielzustand.aktuellerBildschirm = "tagphase"; spielzustand.meldung = `${next.name} ist neuer Bürgermeister.`; render(); return;
   }
@@ -336,6 +346,24 @@ app.addEventListener("submit", (event) => {
       if (c.rolle === "Unruhestifter") { jakobZiel=actionValue("#jakob-ziel"); if(!jakobZiel||jakobZiel===ownerByName[c.name]?.id||!spielzustand.spieler.some(p=>p.id===jakobZiel&&p.istAmLeben)){spielzustand.meldung="Jakob muss eine andere, lebende Person auswählen.";render();return;} }
       if (c.rolle === "Weiser") { const r=ownerByName[c.name]?.rolle; heilenZiel=actionValue("#weiser-heilen"); toetenZiel=actionValue("#weiser-toeten"); const heilbaresOpfer=spielzustand.spieler.find(p=>p.id===spielzustand.nachtAktionen.moerderOpfer&&spielzustand.nachtAktionen.moerderOpferGetötet&&!p.istAmLeben); if(heilenZiel&&r?.hatGeheilt){spielzustand.meldung="Bileam hat seine Heilfähigkeit bereits eingesetzt.";render();return;} if(toetenZiel&&r?.hatGetötet){spielzustand.meldung="Bileam hat seine Tötungsfähigkeit bereits eingesetzt.";render();return;} if(heilenZiel&&(!heilbaresOpfer||heilenZiel!==heilbaresOpfer.id)){spielzustand.meldung="Bileam darf nur das von den Mördern getötete Opfer heilen.";render();return;} if(toetenZiel&&!spielzustand.spieler.some(p=>p.id===toetenZiel&&p.istAmLeben)){spielzustand.meldung="Bileam kann nur einen lebenden Spieler töten.";render();return;} if(heilenZiel&&heilenZiel===toetenZiel){spielzustand.meldung="Heilen und töten müssen unterschiedliche Spieler betreffen.";render();return;} }
     }
+    // Jede bestätigte Charakteraktion wird zum Zeitpunkt ihrer Ausführung protokolliert.
+    if (moerdergruppe) {
+      const ziel = spielzustand.spieler.find(p => p.id === opferId);
+      protokollieren(`Die Mörder wählen ${ziel?.name || "ein unbekanntes Opfer"} als Ziel.`);
+    }
+    if (abraham) {
+      const [a, b] = abraham.map(id => spielzustand.spieler.find(p => p.id === id));
+      protokollieren(`Abraham verliebt ${a?.name || "unbekannt"} und ${b?.name || "unbekannt"} miteinander.`);
+    }
+    if (prophetZiel) {
+      const ziel = spielzustand.spieler.find(p => p.id === prophetZiel);
+      protokollieren(`Elisa untersucht die Rolle von ${ziel?.name || "einem unbekannten Spieler"}${prophetRolle ? `; manuelle Zuordnung: ${prophetRolle}` : "."}`);
+    }
+    if (beschuetzerZiel) protokollieren(`David beschützt ${spielzustand.spieler.find(p => p.id === beschuetzerZiel)?.name || "einen unbekannten Spieler"}.`);
+    if (poetZiel) protokollieren(`Salomo inspiriert ${spielzustand.spieler.find(p => p.id === poetZiel)?.name || "einen unbekannten Spieler"}; diese Person muss am Tag in Reimen sprechen.`);
+    if (heilenZiel) protokollieren(`Bileam heilt ${spielzustand.spieler.find(p => p.id === heilenZiel)?.name || "das ausgewählte Opfer"}.`);
+    if (toetenZiel) protokollieren(`Bileam versucht, ${spielzustand.spieler.find(p => p.id === toetenZiel)?.name || "einen unbekannten Spieler"} zu töten.`);
+    if (jakobZiel) protokollieren(`Jakob tauscht seine Rolle mit ${spielzustand.spieler.find(p => p.id === jakobZiel)?.name || "einem unbekannten Spieler"}.`);
     spielzustand.meldung = "";
     if (prophetZiel) {
       const target=spielzustand.spieler.find(p=>p.id===prophetZiel);
@@ -358,6 +386,7 @@ app.addEventListener("submit", (event) => {
           spielzustand.meldung="David hat sich selbst beschützt und stirbt durch den Angriff der Mörder.";
         } else {
           // Ein gezielter Angriff auf David hat sonst keinen Effekt.
+          protokollieren("Die Mörder greifen David an; der Angriff bleibt wirkungslos, weil er sich nicht selbst beschützt hat.");
           spielzustand.nachtAktionen.moerderOpfer=opferId;
           spielzustand.nachtAktionen.moerderOpferGetötet=false;
           // Der Angriff bleibt für die Spielleitung unsichtbar wirkungslos; der Ablauf geht normal weiter.
@@ -381,6 +410,7 @@ app.addEventListener("submit", (event) => {
       const davidSchuetztZiel = david && spielzustand.nachtAktionen.beschützt === target.id;
       if (target.rolle?.name === "David" || target.rolle?.name === "Beschützer") {
         // Bileams direkter Angriff auf David bleibt wie bisher wirkungslos.
+        protokollieren(`Bileam versucht, David zu töten. Der Angriff bleibt wirkungslos.`);
       } else if (davidSchuetztZiel) {
         todesfallHinzufuegen(david, "Bileam");
         spielzustand.meldung = `${david.name} stirbt durch Bileam, weil er ${target.name} beschützt hat. ${target.name} überlebt.`;
@@ -423,6 +453,7 @@ app.addEventListener("submit", (event) => {
       render();
       return;
     }
+    protokollieren(`Simson nimmt ${ids.map(id => spielzustand.spieler.find(p => p.id === id)?.name || "unbekannt").join(" und ")} mit in den Tod.`, spielzustand.aktuellerBildschirm === "tagphase" ? "Tag" : "Nacht");
     spielerUndVerliebteToeten(ids, "Simson");
     spielzustand.nachtAktionen.simsonFolgetodeErledigt = true;
     spielzustand.simsonFolgedeutErledigt = true;
@@ -517,6 +548,7 @@ app.addEventListener("click", (event) => {
   else if (action === "nacht-einschlafen") naechstePrioritaet();
   else if (action === "tagzuordnung-oeffnen") spielzustand.aktuellerBildschirm = "tagzuordnung";
   else if (action === "tagphase-starten") {
+    protokollieren("Die Nacht endet; die Tagphase beginnt.", "Übergang");
     spielzustand.ersteNachtAbgeschlossen = true;
     const sieg = siegPruefen();
     if (sieg.beendet) {
@@ -529,6 +561,7 @@ app.addEventListener("click", (event) => {
     }
   }
   else if (action === "tagphase-abschliessen") {
+    protokollieren("Die Tagphase wird abgeschlossen.", "Tag");
     // Todesfälle (einschließlich sofortiger Folgen bei nicht eingehaltenen Reimen)
     // sind bereits bei der jeweiligen Bestätigung abgewickelt.
     const sieg = spielendePruefen();
@@ -538,6 +571,7 @@ app.addEventListener("click", (event) => {
     }
   }
   else if (action === "nacht-starten") {
+    protokollieren("Die Nacht beginnt.", "Übergang");
     spielzustand.runde = Number(spielzustand.runde || 1) + 1;
     spielzustand.nachtAktionen = { todesfaelle: [], verliebtTodesfaelleAbgewickelt: false, simsonFolgetodeErledigt: Boolean(spielzustand.simsonFolgedeutErledigt) };
     const nachtChars = spielzustand.spieler.filter(p=>p.istAmLeben && p.rolle?.wachtAuf && !(p.rolle?.name === "Abraham" && p.rolle?.hatBereitsVerliebt)).map(p=>p.rolle).sort((a,b)=>a.prioritaet-b.prioritaet || a.name.localeCompare(b.name,"de"));
@@ -556,4 +590,4 @@ app.addEventListener("click", (event) => {
   render();
 });
 
-export function oberflaecheStarten() { render(); }
+export function oberflaecheStarten() { spielstandLaden(); render(); window.addEventListener("pagehide", spielstandSpeichern); }

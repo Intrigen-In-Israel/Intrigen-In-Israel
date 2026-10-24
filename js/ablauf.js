@@ -1,10 +1,11 @@
-import { spielzustand } from "./spielzustand.js";
+import { spielzustand, protokollieren } from "./spielzustand.js";
 import { charakterNachName } from "../data/charaktere.js";
 import { rollengruppen } from "./verteilung.js";
 
 export function todesfallHinzufuegen(spieler, grund) {
   if (!spieler || !spieler.istAmLeben) return false;
   spieler.istAmLeben = false;
+  protokollieren(`${spieler.name} (${spieler.rolle?.name || spieler.rolle?.rolle || "Rolle unbekannt"}) stirbt durch ${grund}.`);
   if (!Array.isArray(spielzustand.nachtAktionen.todesfaelle)) spielzustand.nachtAktionen.todesfaelle = [];
   spielzustand.nachtAktionen.todesfaelle.push({ spielerId: spieler.id, name: spieler.name, rolle: spieler.rolle?.name || spieler.rolle?.rolle || "Rolle unbekannt", grund });
   return true;
@@ -46,6 +47,7 @@ export function siegPruefen() {
 export function spielendePruefen() {
   const ergebnis = siegPruefen();
   if (ergebnis.beendet) {
+    if (!spielzustand.spielende) protokollieren(`Spielende: ${ergebnis.sieger}. ${ergebnis.grund}`, "Spielende");
     spielzustand.spielende = ergebnis;
     spielzustand.aktuellerBildschirm = "spielende";
   }
@@ -130,6 +132,7 @@ export function bürgermeisterPruefen() {
 }
 
 export function spielZuruecksetzen() {
+  spielzustand.protokoll = [];
   spielzustand.spieler.forEach(p => {
     p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; p.istBuergermeister = false;
   });

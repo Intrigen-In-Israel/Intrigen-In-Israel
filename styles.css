@@ -73,3 +73,8 @@ select option:disabled, select option.rolle-vergeben {
 .round-phase { color: #4b5563; font-size: .9rem; }
 .death-report { margin: .45rem 0 .75rem; font-size: .88rem; line-height: 1.45; color: #343434; }
 .death-report span { display: inline; }
+
+/* Schlichtes, chronologisches Protokoll am Spielende. */
+.game-log { border-top: 1px solid #ddd; padding-top: .35rem; }
+.game-log p { margin: .45rem 0; line-height: 1.45; overflow-wrap: anywhere; }
+.game-log p strong { white-space: nowrap; }
