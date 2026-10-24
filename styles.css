@@ -1,7 +1,7 @@
 /* Grundlayout */
 :root { color-scheme: light; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #202020; background: #f4f4f4; }
 * { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; padding-bottom: 5.5rem; }
 .site-header { padding: 1.25rem 1rem; text-align: center; background: #202020; color: #fff; }
 .site-header h1 { margin: 0; font-size: clamp(1.5rem, 5vw, 2rem); }
 .site-header p { margin: .4rem 0 0; color: #ddd; }
@@ -52,14 +52,16 @@ select option:disabled, select option.rolle-vergeben {
 .player-list li.dead-player strong { color: #777; }
 
 .round-footer {
-  position: sticky;
+  position: fixed;
+  left: 50%;
   bottom: 0;
-  z-index: 5;
+  transform: translateX(-50%);
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: .7rem;
-  margin: 1rem auto 0;
+  margin: 0;
   padding: .65rem 1rem;
   width: fit-content;
   min-width: 11rem;
@@ -68,8 +70,52 @@ select option:disabled, select option.rolle-vergeben {
   border: 1px solid #c7cbd1;
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, .14);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, .14);
 }
 .round-phase { color: #4b5563; font-size: .9rem; }
 .death-report { margin: .45rem 0 .75rem; font-size: .88rem; line-height: 1.45; color: #343434; }
 .death-report span { display: inline; }
+
+/* Schlichtes, chronologisches Protokoll am Spielende. */
+.game-log { border-top: 1px solid #ddd; padding-top: .35rem; }
+.game-log p { margin: .45rem 0; line-height: 1.45; overflow-wrap: anywhere; }
+.game-log p strong { white-space: nowrap; }
+
+
+/* Spielstand jederzeit erreichbar löschen, mit expliziter Bestätigung. */
+.round-footer {
+  width: min(760px, calc(100% - 1.4rem));
+  min-width: 0;
+  justify-content: space-between;
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+.round-status { display: flex; align-items: center; gap: .7rem; }
+.clear-save-button { font-size: .88rem; padding: .55rem .75rem; }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, .58);
+}
+.confirm-modal {
+  width: min(460px, 100%);
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: #fff;
+  color: #202020;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .3);
+}
+.confirm-modal h2 { margin-bottom: .5rem; }
+.confirm-modal p { line-height: 1.5; }
+.confirm-modal .button-row { justify-content: flex-end; }
+@media (max-width: 480px) {
+  .round-footer { align-items: stretch; }
+  .round-status { justify-content: space-between; }
+  .clear-save-button { width: 100%; }
+  .confirm-modal .button-row { flex-direction: column; }
+}
