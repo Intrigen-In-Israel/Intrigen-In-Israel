@@ -2,7 +2,7 @@ import { spielzustand } from "./spielzustand.js";
 import { spielerHinzufuegen, spielerEntfernen } from "./spielerverwaltung.js";
 import { alleSets, empfohlenesSet, setAuswaehlen, eigenesSetSpeichern } from "./setverwaltung.js";
 import { spielVerteilenStarten, tagCharaktereZuordnen, aktuelleNamen } from "./verteilung.js";
-import { naechstePrioritaet, vorherigePrioritaet, spielZuruecksetzen, offeneTagCharaktere, spielerUndVerliebteToeten } from "./ablauf.js";
+import { naechstePrioritaet, vorherigePrioritaet, spielZuruecksetzen, offeneTagCharaktere, spielerUndVerliebteToeten, todesfallHinzufuegen, spielendePruefen, siegPruefen, bürgermeisterPruefen } from "./ablauf.js";
 import { CHARAKTERE } from "../data/charaktere.js";
 
 const app = document.querySelector("#app");
@@ -91,7 +91,7 @@ function verteilungBildschirm() {
   let aktion = `<p>Führe die Aktion aus und bestätige sie anschließend. Das Einschlafen erfolgt danach in einem eigenen Fenster.</p>`;
   if (istMoerdergruppe) aktion = `<div class="role-card"><h3>Gemeinsame Aktion der Mörder</h3><p>Alle Mörder handeln gemeinsam und wählen ein lebendes Opfer.</p><label for="moerder-opfer">Opfer</label><select id="moerder-opfer" required><option value="">Bitte auswählen …</option>${spielzustand.spieler.filter(p=>p.istAmLeben).map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select></div>`;
   else for (const c of chars) {
-    if(c.name==="Abraham") aktion+=`<div class="role-card"><h3>Aktion: Zwei Personen verlieben</h3><label for="abraham-person1">Person 1</label><select id="abraham-person1" required>${spielerOptionen("",[],true)}</select><label for="abraham-person2">Person 2</label><select id="abraham-person2" required>${spielerOptionen("",[],true)}</select></div>`;
+    if(c.name==="Abraham" && !spielzustand.spieler.find(p=>p.rolle?.name==="Abraham")?.rolle?.hatBereitsVerliebt) aktion+=`<div class="role-card"><h3>Aktion: Zwei Personen verlieben</h3><label for="abraham-person1">Person 1</label><select id="abraham-person1" required>${spielerOptionen("",[],true)}</select><label for="abraham-person2">Person 2</label><select id="abraham-person2" required>${spielerOptionen("",[],true)}</select></div>`;
     if(c.rolle==="Prophet") {
       const setRollen = spielzustand.ausgewaehltesSet?.rollen || [];
       const prophetSpieler = spielzustand.spieler.find(p => p.rolle?.name === c.name);
@@ -129,7 +129,58 @@ function fertigBildschirm() {
     }).join("");
     return `<div class="role-card"><label for="nachtrag-${spieler.id}">${escapeHtml(spieler.name)}${spieler.istAmLeben ? "" : " (verstorben)"} – tatsächliche Rolle</label><select id="nachtrag-${spieler.id}" data-rollen-nachtrag="${spieler.id}"><option value="">Rolle noch unbekannt</option>${optionen}</select></div>`;
   };
-  return `<section class="panel"><h2>Rollenverteilung abgeschlossen</h2><p>Die Nachtaktionen und die Charakterzuordnung sind abgeschlossen.</p><ul class="player-list">${spielzustand.spieler.map((p) => `<li class="${p.istAmLeben ? "" : "dead-player"}"><span>${escapeHtml(p.name)}${p.istAmLeben ? "" : " (verstorben)"}</span><strong>${escapeHtml(p.rolle?.name ?? "Rolle noch unbekannt")}</strong></li>`).join("")}</ul>${unbekannteSpieler.length ? `<h3>Unbekannte Rollen nachtragen</h3><p>Wenn du die echte Rollenkarte eines Spielers aufgedeckt hast, kannst du die Rolle hier eintragen. Das funktioniert auch bei bereits verstorbenen Spielern.</p><form id="rollen-nachtrag-form">${unbekannteSpieler.map(optionenProSpieler).join("")}<div class="button-row"><button type="submit">Rollen speichern</button></div></form>` : `<p class="muted">Alle Spielerrollen sind zugeordnet.</p>`}${simsonTot && !simsonFolgetodeErledigt ? `<h3>Simsons letzte Tat</h3><p>Simson ist tot. Er kann 1–2 weitere lebende Spieler mit in den Tod reißen. Wähle mindestens eine Person; die zweite Auswahl ist optional.</p><form id="simson-folgetode-form"><label for="simson-opfer-1">Erste Person</label>${simsonOpferOptionen("simson-opfer-1")}<label for="simson-opfer-2">Zweite Person (optional)</label>${simsonOpferOptionen("simson-opfer-2")}<div class="button-row"><button type="submit">Todesopfer bestätigen</button></div></form>` : simsonTot && simsonFolgetodeErledigt ? `<p class="muted">Simsons letzte Tat wurde bereits abgewickelt.</p>` : ""}<div class="button-row"><button data-action="spiel-zuruecksetzen">Zurück zum Anfang</button></div>${meldungHtml()}</section>`;
+  return `<section class="panel"><h2>Erste Nacht abgeschlossen</h2><p>Die Nachtaktionen und die Charakterzuordnung sind abgeschlossen.</p>${todesberichtHtml()}<ul class="player-list">${spielzustand.spieler.map((p) => `<li class="${p.istAmLeben ? "" : "dead-player"}"><span>${escapeHtml(p.name)}${p.istAmLeben ? "" : " (verstorben)"}</span><strong>${escapeHtml(p.rolle?.name ?? "Rolle noch unbekannt")}</strong></li>`).join("")}</ul>${unbekannteSpieler.length ? `<h3>Unbekannte Rollen nachtragen</h3><p>Wenn du die echte Rollenkarte eines Spielers aufgedeckt hast, kannst du die Rolle hier eintragen. Das funktioniert auch bei bereits verstorbenen Spielern.</p><form id="rollen-nachtrag-form">${unbekannteSpieler.map(optionenProSpieler).join("")}<div class="button-row"><button type="submit">Rollen speichern</button></div></form>` : `<p class="muted">Alle Spielerrollen sind zugeordnet.</p>`}${simsonTot && !simsonFolgetodeErledigt ? `<h3>Simsons letzte Tat</h3><p>Simson ist tot. Er kann 1–2 weitere lebende Spieler mit in den Tod reißen. Wähle mindestens eine Person; die zweite Auswahl ist optional.</p><form id="simson-folgetode-form"><label for="simson-opfer-1">Erste Person</label>${simsonOpferOptionen("simson-opfer-1")}<label for="simson-opfer-2">Zweite Person (optional)</label>${simsonOpferOptionen("simson-opfer-2")}<div class="button-row"><button type="submit">Todesopfer bestätigen</button></div></form>` : simsonTot && simsonFolgetodeErledigt ? `<p class="muted">Simsons letzte Tat wurde bereits abgewickelt.</p>` : ""}<div class="button-row"><button data-action="tagphase-starten">Zur Tagphase</button></div>${meldungHtml()}</section>`;
+}
+
+function todesberichtHtml() {
+  const faelle = spielzustand.nachtAktionen.todesfaelle || [];
+  if (!faelle.length) return '<p class="death-report muted">Niemand gestorben.</p>';
+  const grundText = { Mörder: "Mörder", Hinrichtung: "Hinrichtung", Simson: "Simson", Bileam: "Bileam", Verliebt: "Verliebtheit", Salomo: "Salomo (Reim nicht eingehalten)" };
+  return `<p class="death-report">${faelle.map(f => `<span>${escapeHtml(f.name)} – ${escapeHtml(f.rolle || "Rolle unbekannt")} (${escapeHtml(grundText[f.grund] || f.grund)})</span>`).join(" · ")}</p>`;
+}
+function rundenFusszeile() {
+  if (!spielzustand.ausgewaehltesSet || ["spieler", "sets", "eigenesSet"].includes(spielzustand.aktuellerBildschirm)) return "";
+  const tagBildschirme = ["tagphase", "tagbericht", "buergermeister"];
+  const phase = spielzustand.aktuellerBildschirm === "spielende" ? "Spiel beendet" : tagBildschirme.includes(spielzustand.aktuellerBildschirm) ? "Tagphase" : spielzustand.aktuellerBildschirm === "fertig" || spielzustand.aktuellerBildschirm === "tagzuordnung" ? "Erste Nacht" : "Nachtphase";
+  return `<footer class="round-footer"><span>Runde <strong>${Number(spielzustand.runde || 1)}</strong></span><span class="round-phase">${phase}</span></footer>`;
+}
+function nachtberichtBildschirm() {
+  const simsonTot = spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben);
+  const simsonOffen = simsonTot && !spielzustand.simsonFolgedeutErledigt;
+  const ergebnis = siegPruefen();
+  const nachricht = ergebnis.beendet ? `Das Spiel ist beendet: ${ergebnis.grund}` : "Die Nacht ist abgeschlossen. Prüfe die Todesfälle und fahre dann mit dem Tag fort.";
+  const simsonOptions = id => `<select id="${id}" ${simsonOffen ? "required" : ""}><option value="">${id.endsWith("1") ? "Bitte auswählen …" : "Niemanden auswählen"}</option>${spielzustand.spieler.filter(p=>p.istAmLeben&&p.rolle?.name!=="Simson").map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select>`;
+  const simsonForm = simsonOffen ? `<h3>Simsons letzte Tat</h3><p>Simson ist in dieser oder einer früheren Phase gestorben und hat seine Fähigkeit noch nicht eingesetzt. Wähle mindestens eine und höchstens zwei lebende Personen.</p><form id="simson-folgetode-form"><label for="simson-opfer-1">Erste Person</label>${simsonOptions("simson-opfer-1")}<label for="simson-opfer-2">Zweite Person (optional)</label>${simsonOptions("simson-opfer-2")}<div class="button-row"><button type="submit">Todesopfer bestätigen</button></div></form>` : "";
+  return `<section class="panel"><h2>Ergebnis der Nacht – Runde ${spielzustand.runde || 1}</h2><p>${escapeHtml(nachricht)}</p>${todesberichtHtml()}${simsonForm}<div class="button-row">${simsonOffen ? '<button disabled>Erst Simsons letzte Tat abwickeln</button>' : ergebnis.beendet ? '<button data-action="sieg-pruefen">Spielende anzeigen</button>' : '<button data-action="tagphase-starten">Zur Tagphase</button>'}</div>${meldungHtml()}</section>`;
+}
+function tagphaseBildschirm() {
+  const lebende = spielzustand.spieler.filter(p => p.istAmLeben);
+  const simsonTot = spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben);
+  const simsonErledigt = Boolean(spielzustand.nachtAktionen.simsonFolgetodeErledigt);
+  const options = lebende.map(p => `<option value="${p.id}">${escapeHtml(p.name)}${p.rolle?.name ? ` – ${escapeHtml(p.rolle.name)}` : ""}</option>`).join("");
+  const simsonOptions = (id) => `<select id="${id}"><option value="">Niemanden auswählen</option>${lebende.filter(p=>p.rolle?.name!=="Simson").map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select>`;
+  const nochHinrichten = !spielzustand.nachtAktionen.tagHinrichtungErledigt;
+  const inspirierteIds = [...new Set(spielzustand.spieler.filter(p => p.rolle?.name === "Salomo" && p.rolle?.hatInspiriert).map(p => p.rolle.hatInspiriert))];
+  const inspirierte = inspirierteIds.map(id => spielzustand.spieler.find(p => p.id === id && p.istAmLeben)).filter(Boolean);
+  const reimHinweis = inspirierte.length ? `<div class="notice"><strong>In Reimen sprechen:</strong> ${inspirierte.map(p => escapeHtml(p.name)).join(", ")} wurde(n) von Salomo inspiriert und muss/müssen heute in Reimen sprechen. Falls das nicht gelingt, markiere die betroffene Person unten; sie stirbt sofort, und die Siegbedingungen werden direkt geprüft.${(spielzustand.reimFehlerIds || []).length ? ` Bereits vorgemerkt: ${spielzustand.reimFehlerIds.map(id => spielzustand.spieler.find(p => p.id === id)?.name).filter(Boolean).map(escapeHtml).join(", ")}.` : ""}</div><form id="reim-fehler-form"><label for="reim-fehler-opfer">Wer hat nicht in Reimen gesprochen?</label><select id="reim-fehler-opfer"><option value="">Niemanden auswählen</option>${inspirierte.map(p => `<option value="${p.id}">${escapeHtml(p.name)} – ${escapeHtml(p.rolle?.name || p.rolle?.rolle || "Rolle unbekannt")}</option>`).join("")}</select><div class="button-row"><button type="submit">Tod wegen fehlender Reime bestätigen</button></div></form>` : "";
+  return `<section class="panel"><h2>Tagphase – Runde ${spielzustand.runde || 1}</h2>${reimHinweis}${todesberichtHtml()}${buergermeisterHtml()}${nochHinrichten ? `<form id="hinrichtung-form"><label for="hinrichtungs-opfer">Wer wird hingerichtet?</label><select id="hinrichtungs-opfer" required><option value="">Bitte lebende Person auswählen …</option>${options}</select><div class="button-row"><button type="submit">Hinrichtung bestätigen</button></div></form>` : `<p>Die Hinrichtung ist bereits bestätigt.</p>`}${simsonTot && !simsonErledigt ? `<h3>Simsons letzte Tat</h3><p>Simson kann 1–2 weitere lebende Spieler mit in den Tod reißen.</p><form id="tag-simson-form"><label for="tag-simson-1">Erste Person</label>${simsonOptions("tag-simson-1")}<label for="tag-simson-2">Zweite Person (optional)</label>${simsonOptions("tag-simson-2")}<div class="button-row"><button type="submit">Simsons Todesopfer bestätigen</button></div></form>` : ""}<div class="button-row"><button data-action="tagphase-abschliessen" ${nochHinrichten || (simsonTot && !simsonErledigt) ? "disabled" : ""}>Tag abschließen und Nacht beginnen</button></div>${meldungHtml()}</section>`;
+}
+function tagberichtBildschirm() {
+  return `<section class="panel"><h2>Ergebnis des Tages – Runde ${spielzustand.runde || 1}</h2><p>Der Tag ist abgeschlossen. Hier sind die Todesfälle dieser Phase.</p>${todesberichtHtml()}<div class="button-row"><button data-action="nacht-starten">Nacht beginnen</button></div>${meldungHtml()}</section>`;
+}
+function buergermeisterHtml() {
+  const bm = spielzustand.spieler.find(p => p.istBuergermeister);
+  if (bm?.istAmLeben) return `<p>Bürgermeister: <strong>${escapeHtml(bm.name)}</strong></p>`;
+  if (bm && !bm.istAmLeben) return `<p class="notice">Der bisherige Bürgermeister ${escapeHtml(bm.name)} ist tot. Der Spielleiter muss einen lebenden Nachfolger bestimmen.</p>`;
+  return `<p class="muted">Es ist noch kein Bürgermeister eingetragen.</p>`;
+}
+function buergermeisterBildschirm() {
+  const lebende = spielzustand.spieler.filter(p=>p.istAmLeben);
+  return `<section class="panel"><h2>Bürgermeister eintragen</h2><p>Trage den vom Spielleiter mitgeteilten, tatsächlich gewählten lebenden Spieler ein. Ist der bisherige Bürgermeister gestorben, wird hier sein Nachfolger eingetragen.</p><form id="buergermeister-form"><label for="buergermeister-nachfolger">Nachfolger</label><select id="buergermeister-nachfolger" required><option value="">Bitte auswählen …</option>${lebende.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select><div class="button-row"><button type="submit">Nachfolger bestätigen</button></div></form>${meldungHtml()}</section>`;
+}
+function spielendeBildschirm() {
+  const ende = spielzustand.spielende || siegPruefen();
+  return `<section class="panel"><h2>Spiel beendet</h2><p><strong>Sieger: ${escapeHtml(ende.sieger || "")}</strong></p><p>${escapeHtml(ende.grund || "")}</p>${todesberichtHtml()}<h3>Spielerstatus</h3><ul class="player-list">${spielzustand.spieler.map(p=>`<li class="${p.istAmLeben ? "" : "dead-player"}"><span>${escapeHtml(p.name)}${p.istAmLeben ? "" : " (tot)"}</span><strong>${escapeHtml(p.rolle?.name || "Rolle unbekannt")}</strong></li>`).join("")}</ul><div class="button-row"><button data-action="weitere-runde">Weitere Runde mit diesem Set</button><button class="secondary" data-action="spiel-zuruecksetzen">Neues Spiel</button></div></section>`;
 }
 
 function render() {
@@ -139,9 +190,14 @@ function render() {
     eigenesSet: eigenesSetHtml,
     verteilung: verteilungBildschirm,
     tagzuordnung: tagzuordnungBildschirm,
-    fertig: fertigBildschirm
+    fertig: fertigBildschirm,
+    nachtbericht: nachtberichtBildschirm,
+    tagphase: tagphaseBildschirm,
+    tagbericht: tagberichtBildschirm,
+    buergermeister: buergermeisterBildschirm,
+    spielende: spielendeBildschirm
   }[spielzustand.aktuellerBildschirm] ?? spielerBildschirm;
-  app.innerHTML = ansicht();
+  app.innerHTML = ansicht() + rundenFusszeile();
   const summe = document.querySelector("#rollen-summe");
   const eigenesForm = document.querySelector("#eigenes-set-form");
   if (summe && eigenesForm) {
@@ -157,6 +213,52 @@ function render() {
 
 app.addEventListener("submit", (event) => {
   event.preventDefault();
+  if (event.target.id === "reim-fehler-form") {
+    const id = event.target.querySelector("#reim-fehler-opfer")?.value;
+    const opfer = spielzustand.spieler.find(p => p.id === id && p.istAmLeben);
+    if (!opfer) { spielzustand.meldung = "Wähle eine lebende, von Salomo inspirierte Person aus oder lasse das Feld leer."; render(); return; }
+    const salomo = spielzustand.spieler.find(p => p.rolle?.name === "Salomo" && p.rolle?.hatInspiriert === id);
+    if (!salomo) { spielzustand.meldung = "Diese Person ist aktuell nicht als von Salomo inspiriert vermerkt."; render(); return; }
+    spielerUndVerliebteToeten([id], "Salomo");
+    spielzustand.reimFehlerIds = (spielzustand.reimFehlerIds || []).filter(x => x !== id);
+    spielzustand.meldung = `${opfer.name} ist wegen nicht eingehaltener Reimregel gestorben.`;
+    const sieg = spielendePruefen();
+    if (!sieg.beendet) {
+      const simsonTot = spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben);
+      if (simsonTot && !spielzustand.nachtAktionen.simsonFolgetodeErledigt) spielzustand.meldung += " Simson darf noch 1–2 Personen mit in den Tod reißen.";
+    }
+    render(); return;
+  }
+  if (event.target.id === "hinrichtung-form") {
+    const id = event.target.querySelector("#hinrichtungs-opfer")?.value;
+    const opfer = spielzustand.spieler.find(p => p.id === id && p.istAmLeben);
+    if (!opfer) { spielzustand.meldung = "Bitte wähle einen lebenden Spieler aus."; render(); return; }
+    const istDorfdepp = opfer.rolle?.rolle === "Dorfdepp" || opfer.rolle?.name === "Jona";
+    todesfallHinzufuegen(opfer, "Hinrichtung");
+    spielerUndVerliebteToeten([opfer.id], "Verliebt");
+    spielzustand.nachtAktionen.tagHinrichtungErledigt = true;
+    spielzustand.nachtAktionen.dorfdeppHinrichtung = istDorfdepp;
+    spielzustand.meldung = `${opfer.name} wurde hingerichtet.`;
+    if (istDorfdepp) { spielzustand.spielende = { beendet: true, grund: "Der Dorfdepp wurde am Tag hingerichtet.", sieger: "Dorfdepp" }; spielzustand.aktuellerBildschirm = "spielende"; }
+    else { const simsonTot = spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben); if (!simsonTot || spielzustand.nachtAktionen.simsonFolgetodeErledigt) spielzustand.meldung += " Prüfe die weiteren Todesfolgen."; }
+    render(); return;
+  }
+  if (event.target.id === "tag-simson-form") {
+    const ids = [event.target.querySelector("#tag-simson-1")?.value, event.target.querySelector("#tag-simson-2")?.value].filter(Boolean);
+    if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => !spielzustand.spieler.some(p=>p.id===id&&p.istAmLeben&&p.rolle?.name!=="Simson"))) { spielzustand.meldung = "Wähle mindestens eine und höchstens zwei unterschiedliche lebende Personen."; render(); return; }
+    spielerUndVerliebteToeten(ids, "Simson");
+    spielzustand.nachtAktionen.simsonFolgetodeErledigt = true;
+    spielzustand.simsonFolgedeutErledigt = true;
+    spielzustand.meldung = "Simsons letzte Tat wurde abgewickelt.";
+    render(); return;
+  }
+  if (event.target.id === "buergermeister-form") {
+    const id = event.target.querySelector("#buergermeister-nachfolger")?.value;
+    const next = spielzustand.spieler.find(p=>p.id===id&&p.istAmLeben);
+    if (!next) { spielzustand.meldung = "Der Nachfolger muss leben."; render(); return; }
+    spielzustand.spieler.forEach(p=>p.istBuergermeister=false); next.istBuergermeister=true;
+    spielzustand.aktuellerBildschirm = "tagphase"; spielzustand.meldung = `${next.name} ist neuer Bürgermeister.`; render(); return;
+  }
   if (event.target.id === "spieler-form") {
     const input = document.querySelector("#spieler-name");
     const ergebnis = spielerHinzufuegen(input.value);
@@ -219,7 +321,7 @@ app.addEventListener("submit", (event) => {
       if (!opfer || !opfer.istAmLeben) { spielzustand.meldung = "Die Mörder müssen einen lebenden Spieler als Opfer wählen."; render(); return; }
     }
     for (const c of chars) {
-      if (c.name === "Abraham") { const a=actionValue("#abraham-person1"), b=actionValue("#abraham-person2"); if(!a||!b||a===b||![a,b].every(id=>spielzustand.spieler.some(p=>p.id===id&&p.istAmLeben))){spielzustand.meldung="Wähle zwei unterschiedliche, lebende Personen für Abraham.";render();return;} abraham=[a,b]; }
+      if (c.name === "Abraham" && !ownerByName[c.name]?.rolle?.hatBereitsVerliebt) { const a=actionValue("#abraham-person1"), b=actionValue("#abraham-person2"); if(!a||!b||a===b||![a,b].every(id=>spielzustand.spieler.some(p=>p.id===id&&p.istAmLeben))){spielzustand.meldung="Wähle zwei unterschiedliche, lebende Personen für Abraham.";render();return;} abraham=[a,b]; }
       if (c.rolle === "Prophet") {
         prophetZiel=actionValue("#prophet-ziel"); prophetRolle=actionValue("#prophet-rolle");
         const target=spielzustand.spieler.find(p=>p.id===prophetZiel);
@@ -250,7 +352,7 @@ app.addEventListener("submit", (event) => {
       if (opferId===david?.id) {
         if (beschuetzerZielId===opferId) {
           // David hat sich selbst beschützt und wird angegriffen: Nur David stirbt.
-          david.istAmLeben=false;
+          todesfallHinzufuegen(david, "Mörder");
           spielzustand.nachtAktionen.moerderOpfer=david.id;
           spielzustand.nachtAktionen.moerderOpferGetötet=true;
           spielzustand.meldung="David hat sich selbst beschützt und stirbt durch den Angriff der Mörder.";
@@ -262,18 +364,31 @@ app.addEventListener("submit", (event) => {
         }
       } else if (beschuetzerZielId===opferId) {
         // David opfert sich: Nur David stirbt; die beschützte Person bleibt am Leben.
-        if (david) { david.istAmLeben=false; spielzustand.nachtAktionen.moerderOpfer=david.id; }
+        if (david) { todesfallHinzufuegen(david, "Mörder"); spielzustand.nachtAktionen.moerderOpfer=david.id; }
         else { spielzustand.nachtAktionen.moerderOpfer=opferId; }
         spielzustand.nachtAktionen.moerderOpferGetötet=true;
         spielzustand.meldung=david ? `David hat ${opfer.name} beschützt und stirbt stattdessen durch den Angriff der Mörder.` : `${opfer.name} wurde von den Mördern getötet.`;
       } else {
         spielzustand.nachtAktionen.moerderOpfer=opferId;
         spielzustand.nachtAktionen.moerderOpferGetötet=true;
-        opfer.istAmLeben=false;
+        todesfallHinzufuegen(opfer, "Mörder");
       }
     }
-    if (heilenZiel) {const target=spielzustand.spieler.find(p=>p.id===heilenZiel);target.istAmLeben=true;ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGeheilt=true;}
-    if (toetenZiel) {const target=spielzustand.spieler.find(p=>p.id===toetenZiel);if(target.rolle?.name!=="David"&&target.rolle?.name!=="Beschützer"){target.istAmLeben=false;}else{/* Der Angriff auf David bleibt still wirkungslos. Bileam verbraucht den Einsatz trotzdem. */}ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGetötet=true;}
+    if (heilenZiel) {const target=spielzustand.spieler.find(p=>p.id===heilenZiel);target.istAmLeben=true;spielzustand.nachtAktionen.todesfaelle=(spielzustand.nachtAktionen.todesfaelle||[]).filter(f=>f.spielerId!==target.id);ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGeheilt=true;}
+    if (toetenZiel) {
+      const target = spielzustand.spieler.find(p => p.id === toetenZiel);
+      const david = spielzustand.spieler.find(p => p.rolle?.name === "David" || p.rolle?.name === "Beschützer");
+      const davidSchuetztZiel = david && spielzustand.nachtAktionen.beschützt === target.id;
+      if (target.rolle?.name === "David" || target.rolle?.name === "Beschützer") {
+        // Bileams direkter Angriff auf David bleibt wie bisher wirkungslos.
+      } else if (davidSchuetztZiel) {
+        todesfallHinzufuegen(david, "Bileam");
+        spielzustand.meldung = `${david.name} stirbt durch Bileam, weil er ${target.name} beschützt hat. ${target.name} überlebt.`;
+      } else {
+        todesfallHinzufuegen(target, "Bileam");
+      }
+      ownerByName[chars.find(c => c.rolle === "Weiser").name].rolle.hatGetötet = true;
+    }
     if (jakobZiel) {
       const c=chars.find(x=>x.rolle==="Unruhestifter"), owner=ownerByName[c.name], other=spielzustand.spieler.find(p=>p.id===jakobZiel);
       const oldOwn=owner.rolle, oldOther=other.rolle;
@@ -308,8 +423,9 @@ app.addEventListener("submit", (event) => {
       render();
       return;
     }
-    spielerUndVerliebteToeten(ids);
+    spielerUndVerliebteToeten(ids, "Simson");
     spielzustand.nachtAktionen.simsonFolgetodeErledigt = true;
+    spielzustand.simsonFolgedeutErledigt = true;
     spielzustand.meldung = `Simsons letzte Tat wurde ausgeführt. ${ids.length} ausgewählte Person${ids.length === 1 ? " wurde" : "en wurden"} und gegebenenfalls deren Verliebte sind nun tot.`;
     render();
     return;
@@ -400,6 +516,42 @@ app.addEventListener("click", (event) => {
   else if (action === "prioritaet-zurueck") vorherigePrioritaet();
   else if (action === "nacht-einschlafen") naechstePrioritaet();
   else if (action === "tagzuordnung-oeffnen") spielzustand.aktuellerBildschirm = "tagzuordnung";
+  else if (action === "tagphase-starten") {
+    spielzustand.ersteNachtAbgeschlossen = true;
+    const sieg = siegPruefen();
+    if (sieg.beendet) {
+      spielzustand.spielende = sieg;
+      spielzustand.aktuellerBildschirm = "spielende";
+    } else {
+      spielzustand.nachtAktionen = { todesfaelle: [], simsonFolgetodeErledigt: Boolean(spielzustand.simsonFolgedeutErledigt), tagHinrichtungErledigt: false };
+      spielzustand.aktuellerBildschirm = "tagphase";
+      bürgermeisterPruefen();
+    }
+  }
+  else if (action === "tagphase-abschliessen") {
+    // Todesfälle (einschließlich sofortiger Folgen bei nicht eingehaltenen Reimen)
+    // sind bereits bei der jeweiligen Bestätigung abgewickelt.
+    const sieg = spielendePruefen();
+    if (!sieg.beendet) {
+      const brauchtBuergermeister = bürgermeisterPruefen();
+      if (!brauchtBuergermeister) spielzustand.aktuellerBildschirm = "tagbericht";
+    }
+  }
+  else if (action === "nacht-starten") {
+    spielzustand.runde = Number(spielzustand.runde || 1) + 1;
+    spielzustand.nachtAktionen = { todesfaelle: [], verliebtTodesfaelleAbgewickelt: false, simsonFolgetodeErledigt: Boolean(spielzustand.simsonFolgedeutErledigt) };
+    const nachtChars = spielzustand.spieler.filter(p=>p.istAmLeben && p.rolle?.wachtAuf && !(p.rolle?.name === "Abraham" && p.rolle?.hatBereitsVerliebt)).map(p=>p.rolle).sort((a,b)=>a.prioritaet-b.prioritaet || a.name.localeCompare(b.name,"de"));
+    spielzustand.nachtCharaktere = nachtChars.map(c=>c.name);
+    spielzustand.nachtZuordnungen = Object.fromEntries(spielzustand.spieler.filter(p=>p.istAmLeben&&p.rolle).map(p=>[p.rolle.name,p.id]));
+    spielzustand.nachtIndex = 0; spielzustand.nachtPhase = "aktion"; spielzustand.aktuellePrioritaet = nachtChars[0]?.prioritaet ?? 18;
+    spielzustand.aktuellerBildschirm = nachtChars.length ? "verteilung" : "nachtbericht";
+  }
+  else if (action === "sieg-pruefen") spielendePruefen();
+  else if (action === "weitere-runde") {
+    // Set und Spielernamen bleiben erhalten; Rollen, Fähigkeiten und Spielereignisse starten neu.
+    const start = spielVerteilenStarten();
+    spielzustand.meldung = start.ok ? "Neue Runde mit demselben Charakter-Set gestartet." : start.meldung;
+  }
   else if (action === "spiel-zuruecksetzen") spielZuruecksetzen();
   render();
 });

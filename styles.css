@@ -50,3 +50,26 @@ select option:disabled, select option.rolle-vergeben {
 /* Verstorbene Spieler auf der Abschlussübersicht dezent ausgrauen. */
 .player-list li.dead-player { color: #888; background: #f0f0f0; border-color: #d4d4d4; }
 .player-list li.dead-player strong { color: #777; }
+
+.round-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .7rem;
+  margin: 1rem auto 0;
+  padding: .65rem 1rem;
+  width: fit-content;
+  min-width: 11rem;
+  text-align: center;
+  color: #202020;
+  border: 1px solid #c7cbd1;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .14);
+}
+.round-phase { color: #4b5563; font-size: .9rem; }
+.death-report { margin: .45rem 0 .75rem; font-size: .88rem; line-height: 1.45; color: #343434; }
+.death-report span { display: inline; }

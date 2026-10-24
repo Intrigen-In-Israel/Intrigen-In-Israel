@@ -13,6 +13,12 @@ export const spielzustand = {
   poetLetzterSpieler: null,
   unbekannteSpieler: [],
   aktuellerBildschirm: "spieler",
-  meldung: ""
+  meldung: "",
+  runde: 1,
+  spielende: null,
+  ersteNachtAbgeschlossen: false,
+  tagTodesgrund: null,
+  reimFehlerIds: [],
+  simsonFolgedeutErledigt: false
 };
 
