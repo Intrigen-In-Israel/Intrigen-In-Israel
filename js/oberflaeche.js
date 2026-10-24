@@ -250,7 +250,7 @@ app.addEventListener("submit", (event) => {
       if (opferId===david?.id) {
         if (beschuetzerZielId===opferId) {
           // David hat sich selbst beschützt und wird angegriffen: Nur David stirbt.
-          david.lebt=false; david.istAmLeben=false;
+          david.istAmLeben=false;
           spielzustand.nachtAktionen.moerderOpfer=david.id;
           spielzustand.nachtAktionen.moerderOpferGetötet=true;
           spielzustand.meldung="David hat sich selbst beschützt und stirbt durch den Angriff der Mörder.";
@@ -262,18 +262,18 @@ app.addEventListener("submit", (event) => {
         }
       } else if (beschuetzerZielId===opferId) {
         // David opfert sich: Nur David stirbt; die beschützte Person bleibt am Leben.
-        if (david) { david.lebt=false; david.istAmLeben=false; spielzustand.nachtAktionen.moerderOpfer=david.id; }
+        if (david) { david.istAmLeben=false; spielzustand.nachtAktionen.moerderOpfer=david.id; }
         else { spielzustand.nachtAktionen.moerderOpfer=opferId; }
         spielzustand.nachtAktionen.moerderOpferGetötet=true;
         spielzustand.meldung=david ? `David hat ${opfer.name} beschützt und stirbt stattdessen durch den Angriff der Mörder.` : `${opfer.name} wurde von den Mördern getötet.`;
       } else {
         spielzustand.nachtAktionen.moerderOpfer=opferId;
         spielzustand.nachtAktionen.moerderOpferGetötet=true;
-        opfer.lebt=false; opfer.istAmLeben=false;
+        opfer.istAmLeben=false;
       }
     }
-    if (heilenZiel) {const target=spielzustand.spieler.find(p=>p.id===heilenZiel);target.lebt=true;target.istAmLeben=true;ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGeheilt=true;}
-    if (toetenZiel) {const target=spielzustand.spieler.find(p=>p.id===toetenZiel);if(target.rolle?.name!=="David"&&target.rolle?.name!=="Beschützer"){target.lebt=false;target.istAmLeben=false;}else{/* Der Angriff auf David bleibt still wirkungslos. Bileam verbraucht den Einsatz trotzdem. */}ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGetötet=true;}
+    if (heilenZiel) {const target=spielzustand.spieler.find(p=>p.id===heilenZiel);target.istAmLeben=true;ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGeheilt=true;}
+    if (toetenZiel) {const target=spielzustand.spieler.find(p=>p.id===toetenZiel);if(target.rolle?.name!=="David"&&target.rolle?.name!=="Beschützer"){target.istAmLeben=false;}else{/* Der Angriff auf David bleibt still wirkungslos. Bileam verbraucht den Einsatz trotzdem. */}ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGetötet=true;}
     if (jakobZiel) {
       const c=chars.find(x=>x.rolle==="Unruhestifter"), owner=ownerByName[c.name], other=spielzustand.spieler.find(p=>p.id===jakobZiel);
       const oldOwn=owner.rolle, oldOther=other.rolle;

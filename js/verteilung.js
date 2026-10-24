@@ -17,7 +17,7 @@ export function spielVerteilenStarten() {
   if (!spielzustand.ausgewaehltesSet) return { ok: false, meldung: "Bitte wähle zuerst ein Set aus." };
   if (spielzustand.ausgewaehltesSet.rollen.length !== spielzustand.spieler.length) return { ok: false, meldung: "Die Anzahl der Charaktere muss der Anzahl der Spieler entsprechen." };
   if (new Set(spielzustand.ausgewaehltesSet.rollen).size !== spielzustand.ausgewaehltesSet.rollen.length) return { ok: false, meldung: "Jeder konkrete Charakter darf nur einmal vorkommen." };
-  spielzustand.spieler.forEach(p => { p.rolle = null; p.verliebtMit = []; p.lebt = true; p.istAmLeben = true; });
+  spielzustand.spieler.forEach(p => { p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; });
   spielzustand.unbekannteZuordnungen = [];
   spielzustand.unbekannteSpieler = [];
   spielzustand.nachtAktionen = {};

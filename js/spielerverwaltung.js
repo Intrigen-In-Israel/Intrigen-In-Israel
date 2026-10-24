@@ -14,7 +14,6 @@ export function spielerHinzufuegen(name) {
     name: saubererName,
     rolle: null,
     verliebtMit: [],
-    lebt: true,
     istBuergermeister: false
   });
   spielzustand.meldung = "";

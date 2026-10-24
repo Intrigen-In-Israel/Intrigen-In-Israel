@@ -13,7 +13,6 @@ export function spielerUndVerliebteToeten(spielerIds) {
     verarbeitet.add(id);
     const spieler = spielzustand.spieler.find(p => p.id === id);
     if (!spieler) continue;
-    spieler.lebt = false;
     spieler.istAmLeben = false;
     for (const partnerId of spieler.verliebtMit || []) {
       const partner = spielzustand.spieler.find(p => p.id === partnerId);
@@ -76,7 +75,7 @@ export function vorherigePrioritaet() {
 
 export function spielZuruecksetzen() {
   spielzustand.spieler.forEach(p => {
-    p.rolle = null; p.verliebtMit = []; p.lebt = true; p.istAmLeben = true; p.istBuergermeister = false;
+    p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; p.istBuergermeister = false;
   });
   spielzustand.ausgewaehltesSet = null;
   spielzustand.unbekannteZuordnungen = [];
