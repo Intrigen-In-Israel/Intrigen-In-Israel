@@ -1,5 +1,5 @@
 /* Offline-Cache. Bei Änderungen an Dateien die Versionsnummer erhöhen. */
-const CACHE_NAME = "intrigen-in-israel-v16";
+const CACHE_NAME = "intrigen-in-israel-v23";
 const APP_FILES = [
   "./",
   "./index.html",

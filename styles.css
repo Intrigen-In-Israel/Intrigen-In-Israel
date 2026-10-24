@@ -46,3 +46,7 @@ select option:disabled, select option.rolle-vergeben {
   color: #777;
   background-color: #e5e5e5;
 }
+
+/* Verstorbene Spieler auf der Abschlussübersicht dezent ausgrauen. */
+.player-list li.dead-player { color: #888; background: #f0f0f0; border-color: #d4d4d4; }
+.player-list li.dead-player strong { color: #777; }

@@ -2,9 +2,37 @@ import { spielzustand } from "./spielzustand.js";
 import { charakterNachName } from "../data/charaktere.js";
 import { rollengruppen } from "./verteilung.js";
 
+// Markiert getötete Spieler und löst die Todesfolge bei Verliebten aus.
+// Die Verliebten sterben erst am Morgen, wenn die Nachtaktionen abgeschlossen sind.
+export function spielerUndVerliebteToeten(spielerIds) {
+  const warteschlange = [...spielerIds];
+  const verarbeitet = new Set();
+  while (warteschlange.length) {
+    const id = warteschlange.shift();
+    if (verarbeitet.has(id)) continue;
+    verarbeitet.add(id);
+    const spieler = spielzustand.spieler.find(p => p.id === id);
+    if (!spieler) continue;
+    spieler.lebt = false;
+    spieler.istAmLeben = false;
+    for (const partnerId of spieler.verliebtMit || []) {
+      const partner = spielzustand.spieler.find(p => p.id === partnerId);
+      if (partner?.istAmLeben && !verarbeitet.has(partnerId)) warteschlange.push(partnerId);
+    }
+  }
+}
+
+function verliebteAmMorgenAbwickeln() {
+  if (spielzustand.nachtAktionen.verliebtTodesfaelleAbgewickelt) return;
+  const bereitsTote = spielzustand.spieler.filter(p => !p.istAmLeben).map(p => p.id);
+  spielerUndVerliebteToeten(bereitsTote);
+  spielzustand.nachtAktionen.verliebtTodesfaelleAbgewickelt = true;
+}
+
 export function naechstePrioritaet() {
   const current = charakterNachName(spielzustand.nachtCharaktere[spielzustand.nachtIndex]);
   if (!current) {
+    verliebteAmMorgenAbwickeln();
     spielzustand.aktuellerBildschirm = "tagzuordnung";
     spielzustand.aktuellePrioritaet = 18;
     return;
@@ -20,6 +48,7 @@ export function naechstePrioritaet() {
   spielzustand.nachtPhase = "namen";
   spielzustand.meldung = "";
   if (next >= spielzustand.nachtCharaktere.length) {
+    verliebteAmMorgenAbwickeln();
     spielzustand.aktuellerBildschirm = "tagzuordnung";
     spielzustand.aktuellePrioritaet = 18;
   } else {
