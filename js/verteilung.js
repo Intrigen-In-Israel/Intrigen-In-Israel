@@ -18,6 +18,8 @@ export function spielVerteilenStarten() {
   if (spielzustand.ausgewaehltesSet.rollen.length !== spielzustand.spieler.length) return { ok: false, meldung: "Die Anzahl der Charaktere muss der Anzahl der Spieler entsprechen." };
   if (new Set(spielzustand.ausgewaehltesSet.rollen).size !== spielzustand.ausgewaehltesSet.rollen.length) return { ok: false, meldung: "Jeder konkrete Charakter darf nur einmal vorkommen." };
   spielzustand.protokoll = [];
+  spielzustand.verliebenFreigegeben = true;
+  spielzustand.jakobTauschInNacht = false;
   spielzustand.spieler.forEach(p => { p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; p.istBuergermeister = false; });
   spielzustand.unbekannteZuordnungen = [];
   spielzustand.unbekannteSpieler = [];
@@ -29,7 +31,9 @@ export function spielVerteilenStarten() {
   spielzustand.runde = 1;
   spielzustand.spielende = null;
   spielzustand.ersteNachtAbgeschlossen = false;
-  spielzustand.nachtCharaktere = nachtCharaktere().map(c => c.name);
+  spielzustand.nachtCharaktere = (spielzustand.hardcoreModus
+    ? rollengruppen().filter(g => g.charakter.wachtAuf).map(g => g.charakter)
+    : nachtCharaktere()).map(c => c.name);
   spielzustand.nachtIndex = 0;
   spielzustand.nachtZuordnungen = {};
   spielzustand.verbrauchteNachtCharaktere = [];

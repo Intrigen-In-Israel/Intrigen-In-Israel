@@ -119,3 +119,7 @@ select option:disabled, select option.rolle-vergeben {
   .clear-save-button { width: 100%; }
   .confirm-modal .button-row { flex-direction: column; }
 }
+
+/* Auswahl des optionalen Hardcore-Spielmodus. */
+.hardcore-option { display: flex; align-items: center; gap: .65rem; margin: 1rem 0; padding: .85rem 1rem; border: 1px solid #c7cbd1; border-radius: 10px; font-weight: 600; }
+.hardcore-option input { width: 1.15rem; height: 1.15rem; margin: 0; }

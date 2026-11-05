@@ -54,6 +54,14 @@ export function spielendePruefen() {
   return ergebnis;
 }
 
+function moerderTodesfallAmNachtendeAbwickeln() {
+  const aktionen = spielzustand.nachtAktionen || {};
+  if (!aktionen.moerderOpferGetötet || aktionen.moerderOpferGeheilt || aktionen.moerderOpferAbgewickelt) return;
+  const opfer = spielzustand.spieler.find(p => p.id === aktionen.moerderOpfer);
+  if (opfer?.istAmLeben) todesfallHinzufuegen(opfer, "Mörder");
+  aktionen.moerderOpferAbgewickelt = true;
+}
+
 function verliebteAmMorgenAbwickeln() {
   if (spielzustand.nachtAktionen.verliebtTodesfaelleAbgewickelt) return;
   const bereitsTote = (spielzustand.nachtAktionen.todesfaelle || []).map(f => f.spielerId);
@@ -71,6 +79,8 @@ function verliebteAmMorgenAbwickeln() {
 export function naechstePrioritaet() {
   const current = charakterNachName(spielzustand.nachtCharaktere[spielzustand.nachtIndex]);
   if (!current) {
+    if (spielzustand.hardcoreModus && !spielzustand.ersteNachtAbgeschlossen && !spielzustand.jakobTauschInNacht) spielzustand.verliebenFreigegeben = false;
+    moerderTodesfallAmNachtendeAbwickeln();
     verliebteAmMorgenAbwickeln();
     if (spielzustand.ersteNachtAbgeschlossen && !(spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben) && !spielzustand.simsonFolgedeutErledigt) && spielendePruefen().beendet) return;
     spielzustand.aktuellerBildschirm = spielzustand.ersteNachtAbgeschlossen ? "nachtbericht" : "tagzuordnung";
@@ -87,6 +97,8 @@ export function naechstePrioritaet() {
   spielzustand.nachtPhase = spielzustand.ersteNachtAbgeschlossen ? "aktion" : "namen";
   spielzustand.meldung = "";
   if (next >= spielzustand.nachtCharaktere.length) {
+    if (spielzustand.hardcoreModus && !spielzustand.ersteNachtAbgeschlossen && !spielzustand.jakobTauschInNacht) spielzustand.verliebenFreigegeben = false;
+    moerderTodesfallAmNachtendeAbwickeln();
     verliebteAmMorgenAbwickeln();
     if (spielzustand.ersteNachtAbgeschlossen && !(spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben) && !spielzustand.simsonFolgedeutErledigt) && spielendePruefen().beendet) return;
     spielzustand.aktuellerBildschirm = spielzustand.ersteNachtAbgeschlossen ? "nachtbericht" : "tagzuordnung";
@@ -133,6 +145,9 @@ export function bürgermeisterPruefen() {
 
 export function spielZuruecksetzen() {
   spielzustand.protokoll = [];
+  spielzustand.hardcoreModus = false;
+  spielzustand.verliebenFreigegeben = true;
+  spielzustand.jakobTauschInNacht = false;
   spielzustand.spieler.forEach(p => {
     p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; p.istBuergermeister = false;
   });

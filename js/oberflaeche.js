@@ -9,6 +9,27 @@ const app = document.querySelector("#app");
 let speicherLoeschenDialogOffen = false;
 const escapeHtml = (wert) => String(wert).replace(/[&<>"']/g, (zeichen) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[zeichen]);
 
+function hardcoreCharakterKannHandeln(charakter, spieler) {
+  if (!spielzustand.hardcoreModus) return true;
+  if (!spieler?.istAmLeben) return false;
+  if (charakter.name === "Abraham") return spielzustand.verliebenFreigegeben;
+  if (charakter.rolle === "Weiser") return !(spieler.rolle?.hatGeheilt && spieler.rolle?.hatGetötet);
+  return true;
+}
+
+function hardcoreAktionsbeschreibung(charakter) {
+  switch (charakter.rolle) {
+    case "Vermittler": return "Er hätte zwei lebende Spieler miteinander verlieben können (sofern Verlieben freigegeben war).";
+    case "Prophet": return "Er hätte die Rolle eines anderen lebenden Spielers erfahren und eine noch unbekannte Rolle gegebenenfalls zuordnen können.";
+    case "Beschützer": return "Er hätte einen lebenden Spieler vor dem Angriff der Mörder beschützen können.";
+    case "Poet": return "Er hätte einen lebenden Spieler bestimmen können, der am nächsten Tag in Reimen sprechen muss.";
+    case "Mörder": return "Er hätte gemeinsam mit den anderen Mördern einen lebenden Spieler als Opfer auswählen können.";
+    case "Unruhestifter": return "Er hätte seine Rolle mit einem anderen lebenden Spieler tauschen können.";
+    case "Weiser": return "Er hätte das von den Mördern getötete Opfer heilen und/oder zusätzlich einen lebenden Spieler töten können (jede Fähigkeit einmal pro Spiel).";
+    default: return charakter.funktion || "Für diesen Charakter ist keine Nachtaktion hinterlegt.";
+  }
+}
+
 function meldungHtml() {
   return spielzustand.meldung ? `<p class="notice">${escapeHtml(spielzustand.meldung)}</p>` : "";
 }
@@ -43,6 +64,7 @@ function setBildschirm() {
       : "Es werden ausschließlich Sets angezeigt, die exakt zu dieser Spielerzahl passen.";
   return `<section class="panel"><h2>2. Charakterset auswählen</h2><p>Spielerzahl: <strong>${anzahl}</strong></p><p class="notice">${escapeHtml(hinweis)}</p>
     ${sets.length ? `<h3>Vorgefertigte Sets</h3><ul class="set-list">${sets.map((set) => `<li class="set-option"><input type="radio" name="set-auswahl" id="${set.id}" value="${set.id}" ${spielzustand.ausgewaehltesSet?.id === set.id ? "checked" : ""}><label for="${set.id}"><strong>${escapeHtml(set.name)}</strong><span class="muted small">${set.rollen.map((name) => { const c = CHARAKTERE.find((eintrag) => eintrag.name === name); return c ? c.rolle : name; }).map(escapeHtml).join(", ")}</span></label></li>`).join("")}</ul>` : ''}
+    <label class="hardcore-option"><input id="hardcore-modus" type="checkbox" ${spielzustand.hardcoreModus ? "checked" : ""}> Hardcore-Modus</label>
     <div class="button-row">${sets.length ? '<button data-action="set-uebernehmen">Set übernehmen</button>' : ''}<button class="secondary" data-action="eigenes-set-oeffnen">Stattdessen eigenes Set erstellen</button><button class="secondary" data-action="zurueck-zu-spielern">Zurück</button></div>
     ${meldungHtml()}
   </section>`;
@@ -64,6 +86,7 @@ function eigenesSetHtml() {
   return `<section class="panel"><h2>Eigenes Set erstellen</h2><p>Wähle für jeden Spieler genau einen unterschiedlichen Charakter aus. Jeder konkrete Charakter kann höchstens einmal vorkommen. Mehrere Charaktere dürfen dieselbe allgemeine Rolle haben.</p>
     <form id="eigenes-set-form"><div class="role-grid">${charakterKarten}</div>
     <p>Charaktere ausgewählt: <strong id="rollen-summe">0</strong> / ${spielzustand.spieler.length}</p>
+    <label class="hardcore-option"><input id="hardcore-modus" type="checkbox" ${spielzustand.hardcoreModus ? "checked" : ""}> Hardcore-Modus</label>
     <p class="muted small">Verfügbare Charaktere je Rolle: ${Object.entries(rollenAnzahlen).map(([rolle, anzahl]) => `${escapeHtml(rolle)}: ${anzahl}`).join(" · ")}</p>
     <div class="button-row"><button type="submit">Set speichern und übernehmen</button><button type="button" class="secondary" data-action="zurueck-zu-sets">Abbrechen</button></div></form>${meldungHtml()}</section>`;
 }
@@ -84,15 +107,31 @@ function verteilungBildschirm() {
       // beim späteren Aufruf des entsprechenden Charakters vorauswählen.
       const bekannterSpieler = spielzustand.spieler.find(p => p.rolle?.name === c.name);
       const vorauswahl = bekannterSpieler?.id || "";
-      const blockierteSpieler = bereitsVergeben.filter(id => id !== vorauswahl);
-      return `<div class="role-card"><h3>${escapeHtml(c.rolle)}</h3><p class="muted small">${escapeHtml(c.name)}</p><label for="nacht-name-${escapeHtml(c.name)}">Wer ist ${escapeHtml(c.name)}?</label><select id="nacht-name-${escapeHtml(c.name)}" data-night-role="${escapeHtml(c.name)}" required>${spielerOptionen(vorauswahl,blockierteSpieler)}</select></div>`;
+      // Hat Elisa diesen Charakter bereits zugeordnet, darf die Zuordnung beim
+      // späteren Aufruf nicht auf einen zweiten Spieler verschoben werden.
+      const blockierteSpieler = vorauswahl
+        ? spielzustand.spieler.filter(p => p.id !== vorauswahl).map(p => p.id)
+        : bereitsVergeben;
+      const status = spielzustand.hardcoreModus && bekannterSpieler && !bekannterSpieler.istAmLeben ? '<p class="notice">Diese Person ist bereits tot und kann nichts mehr tun.</p>' : "";
+      return `<div class="role-card"><h3>${escapeHtml(c.rolle)}</h3><p class="muted small">${escapeHtml(c.name)}</p>${status}<label for="nacht-name-${escapeHtml(c.name)}">Wer ist ${escapeHtml(c.name)}?</label><select id="nacht-name-${escapeHtml(c.name)}" data-night-role="${escapeHtml(c.name)}" required>${spielerOptionen(vorauswahl,blockierteSpieler)}</select></div>`;
     }).join("");
     return `<section class="panel"><h2>1. Namen zuordnen</h2><p>Ordne zuerst alle aufwachenden Charaktere ihren Spielern zu. Danach öffnet sich ein separates Fenster für die Aktion.</p><form id="nacht-namen-form">${zuordnungen}<div class="button-row"><button type="submit">Namen bestätigen</button><button type="button" class="secondary" data-action="prioritaet-zurueck" ${spielzustand.nachtIndex<=0?"disabled":""}>Zurück</button></div></form>${meldungHtml()}</section>`;
   }
-  let aktion = `<p>Führe die Aktion aus und bestätige sie anschließend. Das Einschlafen erfolgt danach in einem eigenen Fenster.</p>`;
-  if (istMoerdergruppe) aktion = `<div class="role-card"><h3>Gemeinsame Aktion der Mörder</h3><p>Alle Mörder handeln gemeinsam und wählen ein lebendes Opfer.</p><label for="moerder-opfer">Opfer</label><select id="moerder-opfer" required><option value="">Bitte auswählen …</option>${spielzustand.spieler.filter(p=>p.istAmLeben).map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select></div>`;
-  else for (const c of chars) {
-    if(c.name==="Abraham" && !spielzustand.spieler.find(p=>p.rolle?.name==="Abraham")?.rolle?.hatBereitsVerliebt) aktion+=`<div class="role-card"><h3>Aktion: Zwei Personen verlieben</h3><label for="abraham-person1">Person 1</label><select id="abraham-person1" required>${spielerOptionen("",[],true)}</select><label for="abraham-person2">Person 2</label><select id="abraham-person2" required>${spielerOptionen("",[],true)}</select></div>`;
+  const ownerFuer = c => spielzustand.spieler.find(p => p.rolle?.name === c.name);
+  const statusHinweise = spielzustand.hardcoreModus ? chars.map(c => {
+    const owner = ownerFuer(c);
+    if (!owner?.istAmLeben) return `<p class="notice"><strong>${escapeHtml(c.name)}:</strong> bereits tot – keine Aktion möglich.<br><span>Lebend hätte dieser Charakter folgende Aktion ausführen können: ${escapeHtml(hardcoreAktionsbeschreibung(c))}</span></p>`;
+    if (c.name === "Abraham" && !hardcoreCharakterKannHandeln(c, ownerFuer(c))) return `<p class="notice"><strong>${escapeHtml(c.name)}:</strong> Verlieben ist aktuell nicht möglich.</p>`;
+    if (c.rolle === "Weiser" && !hardcoreCharakterKannHandeln(c, ownerFuer(c))) return `<p class="notice"><strong>${escapeHtml(c.name)}:</strong> beide Fähigkeiten wurden bereits eingesetzt.</p>`;
+    return "";
+  }).join("") : "";
+  let aktion = `<p>Führe die Aktion aus und bestätige sie anschließend. Das Einschlafen erfolgt danach in einem eigenen Fenster.</p>${statusHinweise}`;
+  if (istMoerdergruppe) {
+    const lebendeMoerder = chars.some(c => ownerFuer(c)?.istAmLeben);
+    aktion += lebendeMoerder ? `<div class="role-card"><h3>Gemeinsame Aktion der Mörder</h3><p>Alle noch lebenden Mörder handeln gemeinsam und wählen ein lebendes Opfer.</p><label for="moerder-opfer">Opfer</label><select id="moerder-opfer" required><option value="">Bitte auswählen …</option>${spielzustand.spieler.filter(p=>p.istAmLeben).map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select></div>` : "";
+  } else for (const c of chars) {
+    if (spielzustand.hardcoreModus && !hardcoreCharakterKannHandeln(c, ownerFuer(c))) continue;
+    if(c.name==="Abraham" && (!spielzustand.hardcoreModus ? !spielzustand.spieler.find(p=>p.rolle?.name==="Abraham")?.rolle?.hatBereitsVerliebt : spielzustand.verliebenFreigegeben)) aktion+=`<div class="role-card"><h3>Aktion: Zwei Personen verlieben</h3><label for="abraham-person1">Person 1</label><select id="abraham-person1" required>${spielerOptionen("",[],true)}</select><label for="abraham-person2">Person 2</label><select id="abraham-person2" required>${spielerOptionen("",[],true)}</select></div>`;
     if(c.rolle==="Prophet") {
       const setRollen = spielzustand.ausgewaehltesSet?.rollen || [];
       const prophetSpieler = spielzustand.spieler.find(p => p.rolle?.name === c.name);
@@ -106,7 +145,7 @@ function verteilungBildschirm() {
     if(c.rolle==="Beschützer") {const david=spielzustand.spieler.find(p=>p.rolle?.name===c.name);aktion+=`<div class="role-card"><h3>Aktion: Beschützen</h3><label for="beschuetzer-ziel">Wen beschützt David?</label><select id="beschuetzer-ziel" required>${spielerOptionen(david?.rolle?.hatBeschützt||"",david?.rolle?.hatBeschützt?[david.rolle.hatBeschützt]:[],true)}</select><p class="muted small">Dieselbe Person darf nicht in zwei aufeinanderfolgenden Nächten beschützt werden.</p></div>`;}
     if(c.rolle==="Poet") {const r=spielzustand.spieler.find(p=>p.rolle?.name===c.name)?.rolle;aktion+=`<div class="role-card"><h3>Aktion: In Reimen sprechen</h3><label for="poet-ziel">Wer muss morgen in Reimen sprechen?</label><select id="poet-ziel" required>${spielerOptionen("",r?.hatInspiriert?[r.hatInspiriert]:[],true)}</select></div>`;}
     if(c.rolle==="Unruhestifter")aktion+=`<div class="role-card"><h3>Aktion: Rollen tauschen</h3><p>Jakob kann mit jedem anderen Spieler tauschen – auch dann, wenn dessen Rolle dem Spielleiter noch unbekannt ist.</p><label for="jakob-ziel">Mit wem tauscht Jakob die Rolle?</label><select id="jakob-ziel" required><option value="">Bitte auswählen …</option>${spielzustand.spieler.filter(p=>p.istAmLeben&&p.id!==spielzustand.spieler.find(x=>x.rolle?.name===c.name)?.id).map(p=>`<option value="${p.id}">${escapeHtml(p.name)} – ${p.rolle ? escapeHtml(p.rolle.name) : "Rolle noch unbekannt"}</option>`).join("")}</select></div>`;
-    if(c.rolle==="Weiser") {const r=spielzustand.spieler.find(p=>p.rolle?.name===c.name)?.rolle;const opferId=spielzustand.nachtAktionen.moerderOpfer;const opfer=spielzustand.spieler.find(p=>p.id===opferId);const heilbaresOpfer=spielzustand.nachtAktionen.moerderOpferGetötet&&opfer&&!opfer.istAmLeben?opfer:null;aktion+=`<div class="role-card"><h3>Aktion: Heilen oder töten</h3><p>Die Mörder haben ${opfer?`<strong>${escapeHtml(opfer.name)}</strong>`:"kein Opfer"} ausgewählt.${heilbaresOpfer?" Diese Person wurde getötet.":" Es gibt kein von den Mördern getötetes Opfer, das du heilen kannst."}</p><label for="weiser-heilen">Mörderopfer heilen (oder niemanden)</label><select id="weiser-heilen" ${r?.hatGeheilt?'disabled':''}><option value="">Niemanden heilen</option>${heilbaresOpfer?`<option value="${heilbaresOpfer.id}">${escapeHtml(heilbaresOpfer.name)}</option>`:""}</select><label for="weiser-toeten">Lebenden Spieler zusätzlich töten</label><select id="weiser-toeten" ${r?.hatGetötet?'disabled':''}>${spielerOptionen("",[],true)}</select><p class="muted small">Jede Fähigkeit kann pro Spiel einmal eingesetzt werden.</p><p class="muted small">Bereits verstorben: ${escapeHtml(spielzustand.spieler.filter(p=>!p.istAmLeben).map(p=>p.name).join(", ") || "niemand")}</p></div>`;}
+    if(c.rolle==="Weiser") {const r=spielzustand.spieler.find(p=>p.rolle?.name===c.name)?.rolle;const opferId=spielzustand.nachtAktionen.moerderOpfer;const opfer=spielzustand.spieler.find(p=>p.id===opferId);const heilbaresOpfer=spielzustand.nachtAktionen.moerderOpferGetötet&&opfer&&opfer.istAmLeben&&!spielzustand.nachtAktionen.moerderOpferGeheilt?opfer:null;aktion+=`<div class="role-card"><h3>Aktion: Heilen oder töten</h3><p>Die Mörder haben ${opfer?`<strong>${escapeHtml(opfer.name)}</strong>`:"kein Opfer"} ausgewählt.${heilbaresOpfer?" Diese Person wurde von den Mördern getötet.":" Es gibt kein von den Mördern getötetes Opfer, das du heilen kannst."}</p><label for="weiser-heilen">Mörderopfer heilen (oder niemanden)</label><select id="weiser-heilen" ${r?.hatGeheilt?'disabled':''}><option value="">Niemanden heilen</option>${heilbaresOpfer?`<option value="${heilbaresOpfer.id}">${escapeHtml(heilbaresOpfer.name)}</option>`:""}</select><label for="weiser-toeten">Lebenden Spieler zusätzlich töten</label><select id="weiser-toeten" ${r?.hatGetötet?'disabled':''}>${spielerOptionen("",[],true)}</select><p class="muted small">Jede Fähigkeit kann pro Spiel einmal eingesetzt werden.</p><p class="muted small">Bereits verstorben: ${escapeHtml(spielzustand.spieler.filter(p=>!p.istAmLeben).map(p=>p.name).join(", ") || "niemand")}</p></div>`;}
   }
   return `<section class="panel"><h2>2. Nachtaktion: ${chars.map(c=>escapeHtml(c.name)).join(" und ")}</h2>${chars.map(c=>`<p><strong>${escapeHtml(c.rolle)}:</strong> ${escapeHtml(c.funktion)}</p>`).join("")}<form id="nacht-aktion-form">${aktion}<div class="button-row"><button type="submit">Aktion bestätigen</button><button type="button" class="secondary" data-action="prioritaet-zurueck" ${spielzustand.nachtIndex<=0?"disabled":""}>Zurück</button></div></form>${meldungHtml()}</section>`;
 }
@@ -176,7 +215,9 @@ function buergermeisterHtml() {
 }
 function buergermeisterBildschirm() {
   const lebende = spielzustand.spieler.filter(p=>p.istAmLeben);
-  return `<section class="panel"><h2>Bürgermeister eintragen</h2><p>Trage den vom Spielleiter mitgeteilten, tatsächlich gewählten lebenden Spieler ein. Ist der bisherige Bürgermeister gestorben, wird hier sein Nachfolger eingetragen.</p><form id="buergermeister-form"><label for="buergermeister-nachfolger">Nachfolger</label><select id="buergermeister-nachfolger" required><option value="">Bitte auswählen …</option>${lebende.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select><div class="button-row"><button type="submit">Nachfolger bestätigen</button></div></form>${meldungHtml()}</section>`;
+  const bisheriger = spielzustand.spieler.find(p => p.istBuergermeister && !p.istAmLeben);
+  const bezeichnung = bisheriger ? `Nachfolger von ${bisheriger.name}` : "Bürgermeister";
+  return `<section class="panel"><h2>Bürgermeister eintragen</h2><p>Trage den vom Spielleiter mitgeteilten, tatsächlich gewählten lebenden Spieler ein. Ist der bisherige Bürgermeister gestorben, wird hier sein Nachfolger eingetragen.</p><form id="buergermeister-form"><label for="buergermeister-nachfolger">${escapeHtml(bezeichnung)}</label><select id="buergermeister-nachfolger" required><option value="">Bitte auswählen …</option>${lebende.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("")}</select><div class="button-row"><button type="submit">Nachfolger bestätigen</button></div></form>${meldungHtml()}</section>`;
 }
 function spielprotokollHtml() {
   const eintraege = spielzustand.protokoll || [];
@@ -208,7 +249,7 @@ function render() {
   const eigenesForm = document.querySelector("#eigenes-set-form");
   if (summe && eigenesForm) {
     const aktualisieren = () => {
-      const wert = [...eigenesForm.querySelectorAll('input[type="checkbox"]')].filter((input) => input.checked).length;
+      const wert = [...eigenesForm.querySelectorAll('input[type="checkbox"][name]')].filter((input) => input.checked).length;
       summe.textContent = String(wert);
       summe.classList.toggle("error", wert !== spielzustand.spieler.length);
     };
@@ -299,10 +340,11 @@ app.addEventListener("submit", (event) => {
     // genau den Charakter, der diesem Spieler bereits zugewiesen ist.
     const konflikt = namen.find(name => {
       const person = spielzustand.spieler.find(p => p.id === zuordnungen[name]);
-      return person?.rolle && person.rolle.name !== name;
+      const bereitsZugeordnet = spielzustand.spieler.find(p => p.rolle?.name === name);
+      return (person?.rolle && person.rolle.name !== name) || (bereitsZugeordnet && bereitsZugeordnet.id !== zuordnungen[name]);
     });
     if (konflikt) {
-      spielzustand.meldung = "Dieser Spieler hat bereits eine andere Rolle erhalten. Die bestehende Zuordnung bleibt erhalten.";
+      spielzustand.meldung = "Diese Rolle oder dieser Spieler ist bereits zugeordnet. Die bestehende Zuordnung bleibt erhalten.";
       render();
       return;
     }
@@ -325,13 +367,14 @@ app.addEventListener("submit", (event) => {
     const moerdergruppe = chars.length > 0 && chars.every(c => c.rolle === "Mörder");
     const actionValue = id => event.target.querySelector(id)?.value || "";
     let opferId = null, abraham = null, prophetZiel = null, prophetRolle = null, beschuetzerZiel = null, poetZiel = null, jakobZiel = null, heilenZiel = null, toetenZiel = null;
-    if (moerdergruppe) {
+    if (moerdergruppe && (!spielzustand.hardcoreModus || chars.some(c => ownerByName[c.name]?.istAmLeben))) {
       opferId = actionValue("#moerder-opfer");
       const opfer = spielzustand.spieler.find(p => p.id === opferId);
       if (!opfer || !opfer.istAmLeben) { spielzustand.meldung = "Die Mörder müssen einen lebenden Spieler als Opfer wählen."; render(); return; }
     }
     for (const c of chars) {
-      if (c.name === "Abraham" && !ownerByName[c.name]?.rolle?.hatBereitsVerliebt) { const a=actionValue("#abraham-person1"), b=actionValue("#abraham-person2"); if(!a||!b||a===b||![a,b].every(id=>spielzustand.spieler.some(p=>p.id===id&&p.istAmLeben))){spielzustand.meldung="Wähle zwei unterschiedliche, lebende Personen für Abraham.";render();return;} abraham=[a,b]; }
+      if (spielzustand.hardcoreModus && !hardcoreCharakterKannHandeln(c, ownerByName[c.name])) continue;
+      if (c.name === "Abraham" && (!spielzustand.hardcoreModus || (ownerByName[c.name]?.istAmLeben && spielzustand.verliebenFreigegeben))) { const a=actionValue("#abraham-person1"), b=actionValue("#abraham-person2"); if(!a||!b||a===b||![a,b].every(id=>spielzustand.spieler.some(p=>p.id===id&&p.istAmLeben))){spielzustand.meldung="Wähle zwei unterschiedliche, lebende Personen für Abraham.";render();return;} abraham=[a,b]; }
       if (c.rolle === "Prophet") {
         prophetZiel=actionValue("#prophet-ziel"); prophetRolle=actionValue("#prophet-rolle");
         const target=spielzustand.spieler.find(p=>p.id===prophetZiel);
@@ -344,10 +387,10 @@ app.addEventListener("submit", (event) => {
       if (c.rolle === "Beschützer") { beschuetzerZiel=actionValue("#beschuetzer-ziel"); if(!beschuetzerZiel||!spielzustand.spieler.some(p=>p.id===beschuetzerZiel&&p.istAmLeben)){spielzustand.meldung="David darf nur eine lebende Person beschützen.";render();return;} if(ownerByName[c.name]?.rolle?.hatBeschützt===beschuetzerZiel){spielzustand.meldung="David darf nicht dieselbe Person wie in der vorherigen Nacht beschützen.";render();return;} }
       if (c.rolle === "Poet") { poetZiel=actionValue("#poet-ziel"); if(!poetZiel||!spielzustand.spieler.some(p=>p.id===poetZiel&&p.istAmLeben)){spielzustand.meldung="Salomo darf nur eine lebende Person auswählen.";render();return;} if(ownerByName[c.name]?.rolle?.hatInspiriert===poetZiel){spielzustand.meldung="Salomo darf nicht dieselbe Person wie in der vorherigen Nacht inspirieren.";render();return;} }
       if (c.rolle === "Unruhestifter") { jakobZiel=actionValue("#jakob-ziel"); if(!jakobZiel||jakobZiel===ownerByName[c.name]?.id||!spielzustand.spieler.some(p=>p.id===jakobZiel&&p.istAmLeben)){spielzustand.meldung="Jakob muss eine andere, lebende Person auswählen.";render();return;} }
-      if (c.rolle === "Weiser") { const r=ownerByName[c.name]?.rolle; heilenZiel=actionValue("#weiser-heilen"); toetenZiel=actionValue("#weiser-toeten"); const heilbaresOpfer=spielzustand.spieler.find(p=>p.id===spielzustand.nachtAktionen.moerderOpfer&&spielzustand.nachtAktionen.moerderOpferGetötet&&!p.istAmLeben); if(heilenZiel&&r?.hatGeheilt){spielzustand.meldung="Bileam hat seine Heilfähigkeit bereits eingesetzt.";render();return;} if(toetenZiel&&r?.hatGetötet){spielzustand.meldung="Bileam hat seine Tötungsfähigkeit bereits eingesetzt.";render();return;} if(heilenZiel&&(!heilbaresOpfer||heilenZiel!==heilbaresOpfer.id)){spielzustand.meldung="Bileam darf nur das von den Mördern getötete Opfer heilen.";render();return;} if(toetenZiel&&!spielzustand.spieler.some(p=>p.id===toetenZiel&&p.istAmLeben)){spielzustand.meldung="Bileam kann nur einen lebenden Spieler töten.";render();return;} if(heilenZiel&&heilenZiel===toetenZiel){spielzustand.meldung="Heilen und töten müssen unterschiedliche Spieler betreffen.";render();return;} }
+      if (c.rolle === "Weiser") { const r=ownerByName[c.name]?.rolle; heilenZiel=actionValue("#weiser-heilen"); toetenZiel=actionValue("#weiser-toeten"); const heilbaresOpfer=spielzustand.spieler.find(p=>p.id===spielzustand.nachtAktionen.moerderOpfer&&spielzustand.nachtAktionen.moerderOpferGetötet&&p.istAmLeben&&!spielzustand.nachtAktionen.moerderOpferGeheilt); if(heilenZiel&&r?.hatGeheilt){spielzustand.meldung="Bileam hat seine Heilfähigkeit bereits eingesetzt.";render();return;} if(toetenZiel&&r?.hatGetötet){spielzustand.meldung="Bileam hat seine Tötungsfähigkeit bereits eingesetzt.";render();return;} if(heilenZiel&&(!heilbaresOpfer||heilenZiel!==heilbaresOpfer.id)){spielzustand.meldung="Bileam darf nur das von den Mördern getötete Opfer heilen.";render();return;} if(toetenZiel&&!spielzustand.spieler.some(p=>p.id===toetenZiel&&p.istAmLeben)){spielzustand.meldung="Bileam kann nur einen lebenden Spieler töten.";render();return;} if(heilenZiel&&heilenZiel===toetenZiel){spielzustand.meldung="Heilen und töten müssen unterschiedliche Spieler betreffen.";render();return;} }
     }
     // Jede bestätigte Charakteraktion wird zum Zeitpunkt ihrer Ausführung protokolliert.
-    if (moerdergruppe) {
+    if (moerdergruppe && opferId) {
       const ziel = spielzustand.spieler.find(p => p.id === opferId);
       protokollieren(`Die Mörder wählen ${ziel?.name || "ein unbekanntes Opfer"} als Ziel.`);
     }
@@ -370,19 +413,19 @@ app.addEventListener("submit", (event) => {
       if(prophetRolle && !target.rolle) { target.rolle={...CHARAKTERE.find(c=>c.name===prophetRolle)}; spielzustand.meldung=`Manuelle Zuordnung gespeichert: ${target.name} ist ${prophetRolle} (${target.rolle.rolle}).`; }
       else spielzustand.meldung=`Der Prophet erfährt: ${target.name} hat die Rolle „${target.rolle.rolle}“ (${target.rolle.name}).`;
     }
-    if (abraham) { const [a,b]=abraham.map(id=>spielzustand.spieler.find(p=>p.id===id)); a.verliebtMit=[...new Set([...(a.verliebtMit||[]),b.id])]; b.verliebtMit=[...new Set([...(b.verliebtMit||[]),a.id])]; ownerByName.Abraham.rolle.hatBereitsVerliebt=true; }
+    if (abraham) { const [a,b]=abraham.map(id=>spielzustand.spieler.find(p=>p.id===id)); a.verliebtMit=[...new Set([...(a.verliebtMit||[]),b.id])]; b.verliebtMit=[...new Set([...(b.verliebtMit||[]),a.id])]; ownerByName.Abraham.rolle.hatBereitsVerliebt=true; if (spielzustand.hardcoreModus) spielzustand.verliebenFreigegeben=false; }
     if (beschuetzerZiel) { ownerByName[chars.find(c=>c.rolle==="Beschützer").name].rolle.hatBeschützt=beschuetzerZiel; spielzustand.nachtAktionen.beschützt=beschuetzerZiel; }
     if (poetZiel) ownerByName[chars.find(c=>c.rolle==="Poet").name].rolle.hatInspiriert=poetZiel;
-    if (moerdergruppe) {
+    if (moerdergruppe && opferId) {
       const opfer=spielzustand.spieler.find(p=>p.id===opferId);
       const beschuetzerZielId=spielzustand.nachtAktionen.beschützt;
       const david=spielzustand.spieler.find(p=>p.rolle?.name==="David" || p.rolle?.name==="Beschützer");
       if (opferId===david?.id) {
         if (beschuetzerZielId===opferId) {
-          // David hat sich selbst beschützt und wird angegriffen: Nur David stirbt.
-          todesfallHinzufuegen(david, "Mörder");
+          // David hat sich selbst beschützt und wird angegriffen: Sein Tod wird bis zum Nachtende vorgemerkt.
           spielzustand.nachtAktionen.moerderOpfer=david.id;
           spielzustand.nachtAktionen.moerderOpferGetötet=true;
+          spielzustand.nachtAktionen.moerderOpferGeheilt=false;
           spielzustand.meldung="David hat sich selbst beschützt und stirbt durch den Angriff der Mörder.";
         } else {
           // Ein gezielter Angriff auf David hat sonst keinen Effekt.
@@ -392,18 +435,19 @@ app.addEventListener("submit", (event) => {
           // Der Angriff bleibt für die Spielleitung unsichtbar wirkungslos; der Ablauf geht normal weiter.
         }
       } else if (beschuetzerZielId===opferId) {
-        // David opfert sich: Nur David stirbt; die beschützte Person bleibt am Leben.
-        if (david) { todesfallHinzufuegen(david, "Mörder"); spielzustand.nachtAktionen.moerderOpfer=david.id; }
+        // David opfert sich: Sein Tod wird bis zum Nachtende vorgemerkt; die beschützte Person bleibt am Leben.
+        if (david) { spielzustand.nachtAktionen.moerderOpfer=david.id; }
         else { spielzustand.nachtAktionen.moerderOpfer=opferId; }
         spielzustand.nachtAktionen.moerderOpferGetötet=true;
+        spielzustand.nachtAktionen.moerderOpferGeheilt=false;
         spielzustand.meldung=david ? `David hat ${opfer.name} beschützt und stirbt stattdessen durch den Angriff der Mörder.` : `${opfer.name} wurde von den Mördern getötet.`;
       } else {
         spielzustand.nachtAktionen.moerderOpfer=opferId;
         spielzustand.nachtAktionen.moerderOpferGetötet=true;
-        todesfallHinzufuegen(opfer, "Mörder");
+        spielzustand.nachtAktionen.moerderOpferGeheilt=false;
       }
     }
-    if (heilenZiel) {const target=spielzustand.spieler.find(p=>p.id===heilenZiel);target.istAmLeben=true;spielzustand.nachtAktionen.todesfaelle=(spielzustand.nachtAktionen.todesfaelle||[]).filter(f=>f.spielerId!==target.id);ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGeheilt=true;}
+    if (heilenZiel) {const target=spielzustand.spieler.find(p=>p.id===heilenZiel);if(!target.istAmLeben){target.istAmLeben=true;spielzustand.nachtAktionen.todesfaelle=(spielzustand.nachtAktionen.todesfaelle||[]).filter(f=>f.spielerId!==target.id);}spielzustand.nachtAktionen.moerderOpferGeheilt=true;ownerByName[chars.find(c=>c.rolle==="Weiser").name].rolle.hatGeheilt=true;}
     if (toetenZiel) {
       const target = spielzustand.spieler.find(p => p.id === toetenZiel);
       const david = spielzustand.spieler.find(p => p.rolle?.name === "David" || p.rolle?.name === "Beschützer");
@@ -426,6 +470,7 @@ app.addEventListener("submit", (event) => {
       owner.rolle=reset(oldOther); other.rolle=reset(oldOwn);
       // Nachtcharaktere ist die vor Beginn festgelegte Liste: der neue Jakob wird diese Nacht nicht erneut aufgerufen.
       spielzustand.verbrauchteNachtCharaktere=[...(spielzustand.verbrauchteNachtCharaktere||[]),c.name];
+      if (spielzustand.hardcoreModus) { spielzustand.verliebenFreigegeben=true; spielzustand.jakobTauschInNacht=true; }
     }
     spielzustand.nachtPhase = "einschlafen";
     if (!spielzustand.meldung) spielzustand.meldung = "Aktion ausgeführt und bestätigt. Prüfe das Ergebnis und gehe anschließend zum Einschlafen.";
@@ -520,6 +565,10 @@ app.addEventListener("change", (event) => {
       else result.textContent = `${target.name}: Rolle noch unbekannt. Schaue die Rolle im Spielmaterial nach und wähle sie im Feld darunter aus.`;
     }
   }
+  if (event.target.id === "hardcore-modus") {
+    spielzustand.hardcoreModus = event.target.checked;
+    spielzustand.meldung = "";
+  }
   if (event.target.name === "set-auswahl") {
     const ergebnis = setAuswaehlen(event.target.value);
     spielzustand.meldung = ergebnis.meldung;
@@ -537,7 +586,7 @@ app.addEventListener("click", (event) => {
     // Zustand auch im laufenden Arbeitsspeicher vollständig leeren. Ein Reload
     // würde über pagehide sonst den alten Zustand direkt wieder speichern.
     Object.assign(spielzustand, {
-      spieler: [], ausgewaehltesSet: null, unbekannteZuordnungen: [], aktuellePrioritaet: null,
+      spieler: [], hardcoreModus: false, verliebenFreigegeben: true, jakobTauschInNacht: false, ausgewaehltesSet: null, unbekannteZuordnungen: [], aktuellePrioritaet: null,
       nachtCharaktere: [], nachtIndex: 0, nachtPhase: "namen", nachtZuordnungen: {},
       verbrauchteNachtCharaktere: [], nachtAktionen: {}, poetLetzterSpieler: null,
       unbekannteSpieler: [], aktuellerBildschirm: "spieler", meldung: "", runde: 1,
@@ -579,7 +628,7 @@ app.addEventListener("click", (event) => {
       spielzustand.spielende = sieg;
       spielzustand.aktuellerBildschirm = "spielende";
     } else {
-      spielzustand.nachtAktionen = { todesfaelle: [], simsonFolgetodeErledigt: Boolean(spielzustand.simsonFolgedeutErledigt), tagHinrichtungErledigt: false };
+      spielzustand.nachtAktionen = { todesfaelle: [], simsonFolgetodeErledigt: Boolean(spielzustand.simsonFolgedeutErledigt), tagHinrichtungErledigt: false, moerderOpferGetötet: false, moerderOpferGeheilt: false };
       spielzustand.aktuellerBildschirm = "tagphase";
       bürgermeisterPruefen();
     }
@@ -597,10 +646,11 @@ app.addEventListener("click", (event) => {
   else if (action === "nacht-starten") {
     protokollieren("Die Nacht beginnt.", "Übergang");
     spielzustand.runde = Number(spielzustand.runde || 1) + 1;
-    spielzustand.nachtAktionen = { todesfaelle: [], verliebtTodesfaelleAbgewickelt: false, simsonFolgetodeErledigt: Boolean(spielzustand.simsonFolgedeutErledigt) };
-    const nachtChars = spielzustand.spieler.filter(p=>p.istAmLeben && p.rolle?.wachtAuf && !(p.rolle?.name === "Abraham" && p.rolle?.hatBereitsVerliebt)).map(p=>p.rolle).sort((a,b)=>a.prioritaet-b.prioritaet || a.name.localeCompare(b.name,"de"));
+    spielzustand.nachtAktionen = { todesfaelle: [], verliebtTodesfaelleAbgewickelt: false, simsonFolgetodeErledigt: Boolean(spielzustand.simsonFolgedeutErledigt), moerderOpferGetötet: false, moerderOpferGeheilt: false };
+    spielzustand.jakobTauschInNacht = false;
+    const nachtChars = spielzustand.spieler.filter(p=>(spielzustand.hardcoreModus || p.istAmLeben) && p.rolle?.wachtAuf && (spielzustand.hardcoreModus || !(p.rolle?.name === "Abraham" && p.rolle?.hatBereitsVerliebt))).map(p=>p.rolle).sort((a,b)=>a.prioritaet-b.prioritaet || a.name.localeCompare(b.name,"de"));
     spielzustand.nachtCharaktere = nachtChars.map(c=>c.name);
-    spielzustand.nachtZuordnungen = Object.fromEntries(spielzustand.spieler.filter(p=>p.istAmLeben&&p.rolle).map(p=>[p.rolle.name,p.id]));
+    spielzustand.nachtZuordnungen = Object.fromEntries(spielzustand.spieler.filter(p=>(spielzustand.hardcoreModus || p.istAmLeben)&&p.rolle).map(p=>[p.rolle.name,p.id]));
     spielzustand.nachtIndex = 0; spielzustand.nachtPhase = "aktion"; spielzustand.aktuellePrioritaet = nachtChars[0]?.prioritaet ?? 18;
     spielzustand.aktuellerBildschirm = nachtChars.length ? "verteilung" : "nachtbericht";
   }

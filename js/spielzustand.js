@@ -36,6 +36,9 @@ export function spielstandLaden() {
 }
 export const spielzustand = {
   spieler: [],
+  hardcoreModus: false,
+  verliebenFreigegeben: true,
+  jakobTauschInNacht: false,
   ausgewaehltesSet: null,
   unbekannteZuordnungen: [],
   aktuellePrioritaet: null,
