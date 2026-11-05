@@ -14,7 +14,7 @@ export const CHARAKTERE = [
   {
     name: "Bileam",
     rolle: "Weiser",
-    funktion: "Spricht Flüche und Heilungen aus <4.Mose 22,6 + 23,11>.",
+    funktion: "Kann das von den Mördern ausgewählte Opfer heilen und zusätzlich einen lebenden Spieler töten. Jede Fähigkeit ist einmal pro Spiel möglich; beide können in derselben Nacht eingesetzt werden.",
     prioritaet: 6,
     wachtAuf: true,
     hatGeheilt: false,
@@ -23,7 +23,7 @@ export const CHARAKTERE = [
   {
     name: "Salomo",
     rolle: "Poet",
-    funktion: "Leitet andere mit seiner weisen Redensart <1. Könige 3,16-28>.",
+    funktion: "Inspiriert jede Nacht einen lebenden Spieler. Dieser muss am folgenden Tag ausschließlich in Reimen sprechen und mindestens einen Satz sagen. Sollte er das nicht tun, stribt er sofort.",
     prioritaet: 3,
     wachtAuf: true,
     // Kann nicht zwei Mal nacheinander dieselbe Person inspirieren.
@@ -33,14 +33,14 @@ export const CHARAKTERE = [
   {
     name: "Jona",
     rolle: "Dorfdepp",
-    funktion: "Bringt mit seiner Lebensmüdigkeit Chaos ins Dorf <1Jona 4,3-8>.",
+    funktion: "Gewinnt das Spiel, wenn er tagsüber durch eine Abstimmung hingerichtet wird. Auf andere Weise kann er nicht gewinnen.",
     prioritaet: 18,
     wachtAuf: false
   },
   {
     name: "Abraham",
     rolle: "Vermittler",
-    funktion: "Verbindet Menschen mit Hilfe der Liebe <1. Mose 14,1-67>.",
+    funktion: "Kann zwei lebende Spieler miteinander verlieben. Stirbt einer, stirbt auch der andere.",
     prioritaet: 0,
     wachtAuf: true,
     // Wacht nur auf, wenn er noch keinen verliebt hat.
@@ -56,7 +56,7 @@ export const CHARAKTERE = [
   {
     name: "Jakob",
     rolle: "Unruhestifter",
-    funktion: "Manipuliert und betrügt zu seinen Gunsten <1. Mose 27,18-36>.",
+    funktion: "Kann nachts seine Rollenkarte mit der eines anderen lebenden Spielers tauschen. Ab der nächsten Nacht übernehmen beide ihre neue Rolle und können dessen Fähigkeiten nutzen; bereits ausgeführte Aktionen bleiben bestehen.",
     prioritaet: 7,
     wachtAuf: true
   },
@@ -105,7 +105,7 @@ export const CHARAKTERE = [
   {
     name: "David",
     rolle: "Beschützer",
-    funktion: "Schützer des Volkes und der Schafherde <1. Samuel 18,5>.",
+    funktion: "Wählt jede Nacht einen lebenden Spieler, den er vor dem Angriff der Mörder schützt. David darf sich selbst schützen; wird er dann von den Mördern angegriffen, stirbt er.",
     prioritaet: 2,
     wachtAuf: true,
     // David kann nicht zwei Mal nacheinander dieselbe Person beschützen.
@@ -114,35 +114,35 @@ export const CHARAKTERE = [
   {
     name: "Elisa",
     rolle: "Prophet",
-    funktion: "Enthüllt Intrigen und Identitäten <2 Könige 6,8-12>.",
+    funktion: "Wählt jede Nacht einen anderen lebenden Spieler und erfährt dessen genaue Rolle.",
     prioritaet: 1,
     wachtAuf: true
   },
   {
     name: "Simson",
     rolle: "Richter",
-    funktion: "Reißt Gottes Feinde mit in den Tod <Richter 16,28-30>.",
+    funktion: "Wenn Simson stirbt, darf er ein oder zwei seiner nächsten noch lebenden Sitznachbarn mit in den Tod reißen.",
     prioritaet: 18,
     wachtAuf: false
   },
   {
     name: "Judas",
     rolle: "Mörder",
-    funktion: "Wacht nachts auf und eliminiert Dorfbewohner <Matthäus 16,14-16 + 47-50>.",
+    funktion: "Wacht nachts gemeinsam mit den anderen Mördern auf. Die Mörder einigen sich lautlos auf einen lebenden Spieler, den sie töten wollen.",
     prioritaet: 5,
     wachtAuf: true
   },
   {
     name: "Atalja",
     rolle: "Mörder",
-    funktion: "Wacht nachts auf und eliminiert Dorfbewohner <2. Chronik 22,10>.",
+    funktion: "Wacht nachts gemeinsam mit den anderen Mördern auf. Die Mörder einigen sich lautlos auf einen lebenden Spieler, den sie töten wollen.",
     prioritaet: 5,
     wachtAuf: true
   },
   {
     name: "Isebel",
     rolle: "Mörder",
-    funktion: "Wacht nachts auf und eliminiert Dorfbewohner <1. Könige 21,25-26>.",
+    funktion: "Wacht nachts gemeinsam mit den anderen Mördern auf. Die Mörder einigen sich lautlos auf einen lebenden Spieler, den sie töten wollen.",
     prioritaet: 5,
     wachtAuf: true
   }

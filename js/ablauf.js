@@ -33,14 +33,14 @@ export function spielerUndVerliebteToeten(spielerIds, grund = "Verliebt") {
 export function siegPruefen() {
   const lebende = spielzustand.spieler.filter(p => p.istAmLeben);
   const dorfdeppHinrichtung = spielzustand.nachtAktionen.dorfdeppHinrichtung;
-  if (dorfdeppHinrichtung) return { beendet: true, grund: "Der Dorfdepp wurde am Tag hingerichtet.", sieger: "Dorfdepp" };
+  if (dorfdeppHinrichtung) return { beendet: true, grund: "Jona (Dorfdepp) wurde tagsüber durch eine Abstimmung hingerichtet. Jona gewinnt das Spiel.", sieger: "Dorfdepp" };
   if (lebende.length === 2 && lebende.every(p => (p.verliebtMit || []).includes(lebende.find(q => q.id !== p.id)?.id))) {
-    return { beendet: true, grund: "Nur noch ein verliebtes Paar lebt.", sieger: "Verliebtes Paar" };
+    return { beendet: true, grund: "Es leben nur noch die beiden miteinander verliebten Spieler. Das verliebte Paar gewinnt das Spiel.", sieger: "Verliebtes Paar" };
   }
   const lebendeNichtMoerder = lebende.filter(p => p.rolle?.rolle !== "Mörder");
-  if (!lebendeNichtMoerder.length) return { beendet: true, grund: "Alle Dorfbewohner (Nicht-Mörder) sind tot.", sieger: "Mörder" };
+  if (!lebendeNichtMoerder.length) return { beendet: true, grund: "Alle Spieler, die keine Mörder sind, sind tot. Die Mörder gewinnen das Spiel.", sieger: "Mörder" };
   const lebendeMoerder = lebende.filter(p => p.rolle?.rolle === "Mörder");
-  if (!lebendeMoerder.length) return { beendet: true, grund: "Alle Mörder sind tot.", sieger: "Dorfbewohner" };
+  if (!lebendeMoerder.length) return { beendet: true, grund: "Alle Mörder sind tot. Die Dorfbewohner gewinnen das Spiel.", sieger: "Dorfbewohner" };
   return { beendet: false };
 }
 
@@ -52,6 +52,14 @@ export function spielendePruefen() {
     spielzustand.aktuellerBildschirm = "spielende";
   }
   return ergebnis;
+}
+
+function moerderTodesfallAmNachtendeAbwickeln() {
+  const aktionen = spielzustand.nachtAktionen || {};
+  if (!aktionen.moerderOpferGetötet || aktionen.moerderOpferGeheilt || aktionen.moerderOpferAbgewickelt) return;
+  const opfer = spielzustand.spieler.find(p => p.id === aktionen.moerderOpfer);
+  if (opfer?.istAmLeben) todesfallHinzufuegen(opfer, "Mörder");
+  aktionen.moerderOpferAbgewickelt = true;
 }
 
 function verliebteAmMorgenAbwickeln() {
@@ -71,6 +79,8 @@ function verliebteAmMorgenAbwickeln() {
 export function naechstePrioritaet() {
   const current = charakterNachName(spielzustand.nachtCharaktere[spielzustand.nachtIndex]);
   if (!current) {
+    if (spielzustand.hardcoreModus && !spielzustand.ersteNachtAbgeschlossen && !spielzustand.jakobTauschInNacht) spielzustand.verliebenFreigegeben = false;
+    moerderTodesfallAmNachtendeAbwickeln();
     verliebteAmMorgenAbwickeln();
     if (spielzustand.ersteNachtAbgeschlossen && !(spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben) && !spielzustand.simsonFolgedeutErledigt) && spielendePruefen().beendet) return;
     spielzustand.aktuellerBildschirm = spielzustand.ersteNachtAbgeschlossen ? "nachtbericht" : "tagzuordnung";
@@ -87,6 +97,8 @@ export function naechstePrioritaet() {
   spielzustand.nachtPhase = spielzustand.ersteNachtAbgeschlossen ? "aktion" : "namen";
   spielzustand.meldung = "";
   if (next >= spielzustand.nachtCharaktere.length) {
+    if (spielzustand.hardcoreModus && !spielzustand.ersteNachtAbgeschlossen && !spielzustand.jakobTauschInNacht) spielzustand.verliebenFreigegeben = false;
+    moerderTodesfallAmNachtendeAbwickeln();
     verliebteAmMorgenAbwickeln();
     if (spielzustand.ersteNachtAbgeschlossen && !(spielzustand.spieler.some(p => p.rolle?.name === "Simson" && !p.istAmLeben) && !spielzustand.simsonFolgedeutErledigt) && spielendePruefen().beendet) return;
     spielzustand.aktuellerBildschirm = spielzustand.ersteNachtAbgeschlossen ? "nachtbericht" : "tagzuordnung";
@@ -120,12 +132,12 @@ export function bürgermeisterPruefen() {
   const bisheriger = spielzustand.spieler.find(p => p.istBuergermeister);
   if (bisheriger && !bisheriger.istAmLeben) {
     spielzustand.aktuellerBildschirm = "buergermeister";
-    spielzustand.meldung = "Der Bürgermeister ist gestorben. Trage den vom Spielleiter bestimmten lebenden Nachfolger ein.";
+    spielzustand.meldung = "Der Bürgermeister ist gestorben. Trage den von ihm bestimmten lebenden Nachfolger ein.";
     return true;
   }
   if (!bisheriger && spielzustand.ersteNachtAbgeschlossen) {
     spielzustand.aktuellerBildschirm = "buergermeister";
-    spielzustand.meldung = "Es gibt noch keinen eingetragenen Bürgermeister. Trage den vom Spielleiter eingetragenen, lebenden Gewählten ein.";
+    spielzustand.meldung = "Es gibt noch keinen eingetragenen Bürgermeister. Trage den lebenden Gewählten ein.";
     return true;
   }
   return false;
@@ -133,6 +145,9 @@ export function bürgermeisterPruefen() {
 
 export function spielZuruecksetzen() {
   spielzustand.protokoll = [];
+  spielzustand.hardcoreModus = false;
+  spielzustand.verliebenFreigegeben = true;
+  spielzustand.jakobTauschInNacht = false;
   spielzustand.spieler.forEach(p => {
     p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; p.istBuergermeister = false;
   });
