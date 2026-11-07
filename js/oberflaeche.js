@@ -8,6 +8,8 @@ import { CHARAKTERE } from "../data/charaktere.js";
 const app = document.querySelector("#app");
 let speicherLoeschenDialogOffen = false;
 const escapeHtml = (wert) => String(wert).replace(/[&<>"']/g, (zeichen) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[zeichen]);
+const charakterBild = (name) => `./images/Charakter/${String(name).toLocaleLowerCase("de-DE")}.jpg`;
+const charakterBildHtml = (charakter, klasse = "character-thumb") => `<img class="${klasse}" src="${charakterBild(charakter.name)}" alt="Karte von ${escapeHtml(charakter.name)}" loading="lazy">`;
 
 function hardcoreCharakterKannHandeln(charakter, spieler) {
   if (!spielzustand.hardcoreModus) return true;
@@ -63,7 +65,7 @@ function setBildschirm() {
       ? `Für genau ${anzahl} Spieler gibt es aktuell noch kein vorgefertigtes Rollen-Set. Bitte erstelle ein eigenes Set.`
       : "Es werden ausschließlich Sets angezeigt, die exakt zu dieser Spielerzahl passen.";
   return `<section class="panel"><h2>2. Rollen-Set auswählen</h2><p>Spielerzahl: <strong>${anzahl}</strong></p><p class="notice">${escapeHtml(hinweis)}</p>
-    ${sets.length ? `<h3>Vorgefertigte Sets</h3><ul class="set-list">${sets.map((set) => `<li class="set-option"><input type="radio" name="set-auswahl" id="${set.id}" value="${set.id}" ${spielzustand.ausgewaehltesSet?.id === set.id ? "checked" : ""}><label for="${set.id}"><strong>${escapeHtml(set.name)}</strong><span class="muted small">${set.rollen.map((name) => { const c = CHARAKTERE.find((eintrag) => eintrag.name === name); return c ? c.rolle : name; }).map(escapeHtml).join(", ")}</span></label></li>`).join("")}</ul>` : ''}
+    ${sets.length ? `<h3>Vorgefertigte Sets</h3><ul class="set-list">${sets.map((set) => `<li class="set-option"><input type="radio" name="set-auswahl" id="${set.id}" value="${set.id}" ${spielzustand.ausgewaehltesSet?.id === set.id ? "checked" : ""}><label for="${set.id}" class="set-option-label"><strong>${escapeHtml(set.name)}</strong><span class="set-character-list">${set.rollen.map((name) => { const c = CHARAKTERE.find((eintrag) => eintrag.name === name); return c ? `<span class="set-character">${charakterBildHtml(c)}<span><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.rolle)}</small></span></span>` : `<span class="set-character-name">${escapeHtml(name)}</span>`; }).join("")}</span></label></li>`).join("")}</ul>` : ''}
     <label class="hardcore-option"><input id="hardcore-modus" type="checkbox" ${spielzustand.hardcoreModus ? "checked" : ""}> Hardcore-Modus</label>
     <div class="button-row">${sets.length ? '<button data-action="set-uebernehmen">Set übernehmen</button>' : ''}<button class="secondary" data-action="eigenes-set-oeffnen">Stattdessen eigenes Set erstellen</button><button class="secondary" data-action="zurueck-zu-spielern">Zurück</button></div>
     ${meldungHtml()}
@@ -80,8 +82,7 @@ function eigenesSetHtml() {
   );
   const charakterKarten = CHARAKTERE.map((c) => `<label class="role-card character-choice" for="charakter-${c.name}">
       <span class="character-choice-heading"><input id="charakter-${c.name}" name="${c.name}" type="checkbox" value="1" ${vorhandene.has(c.name) ? "checked" : ""}> <strong>${escapeHtml(c.rolle || c.name)}</strong></span>
-      <span class="muted small">${escapeHtml(c.name)}</span>
-      <span class="muted small">${escapeHtml(c.funktion)}</span>
+      <span class="character-choice-content">${charakterBildHtml(c, "character-choice-image")}<span><strong>${escapeHtml(c.name)}</strong><span class="muted small">${escapeHtml(c.funktion)}</span></span></span>
     </label>`).join("");
   return `<section class="panel"><h2>Eigenes Set erstellen</h2><p>Wähle für jeden Spieler genau einen unterschiedlichen Charakter aus. Jeder konkrete Charakter kann höchstens einmal vorkommen. Mehrere Charaktere dürfen dieselbe allgemeine Rolle haben.</p>
     <form id="eigenes-set-form"><div class="role-grid">${charakterKarten}</div>

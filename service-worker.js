@@ -1,6 +1,6 @@
 
 /* Offline-Cache. Bei Änderungen an Dateien die Versionsnummer erhöhen. */
-const CACHE_NAME = "intrigen-in-israel-v38";
+const CACHE_NAME = "intrigen-in-israel-v39";
 
 const APP_FILES = [
   "./",
@@ -17,7 +17,28 @@ const APP_FILES = [
   "./js/ablauf.js",
   "./js/oberflaeche.js",
   "./images/app-icon.png",
-  "./images/app-icon-maskable.png"
+  "./images/app-icon-maskable.png",
+  "./images/favicon.png",
+  "./images/apple-touch-icon.png",
+  "./images/Charakter/isebel.jpg",
+  "./images/Charakter/atalja.jpg",
+  "./images/Charakter/judas.jpg",
+  "./images/Charakter/simson.jpg",
+  "./images/Charakter/elisa.jpg",
+  "./images/Charakter/david.jpg",
+  "./images/Charakter/abigail.jpg",
+  "./images/Charakter/martha.jpg",
+  "./images/Charakter/nehemia.jpg",
+  "./images/Charakter/petrus.jpg",
+  "./images/Charakter/ruth.jpg",
+  "./images/Charakter/hanna.jpg",
+  "./images/Charakter/jakob.jpg",
+  "./images/Charakter/mordechai.jpg",
+  "./images/Charakter/abraham.jpg",
+  "./images/Charakter/jona.jpg",
+  "./images/Charakter/salomo.jpg",
+  "./images/Charakter/bileam.jpg",
+  "./favicon.ico"
 ];
 
 self.addEventListener("install", (event) => {

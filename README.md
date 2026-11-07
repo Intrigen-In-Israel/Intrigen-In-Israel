@@ -1,6 +1,6 @@
 # Intrigen in Israel
 
-Eine offlinefähige Web-App zur Spielleitung des Spiels **„Intrigen in Israel“** – angelehnt an das klassische Werwolf-Spiel.
+Eine offlinefähige Web-App zur Spielleitung des Rollenspiels **„Intrigen in Israel“** – angelehnt an das klassische Werwolf-Spiel.
 
 ## App öffnen
 
@@ -174,7 +174,7 @@ Die App prüft die Siegbedingungen in folgender Reihenfolge:
 
 ## Letztes Update
 
-**06.11.2026 – Version 38**
+**07.11.2026 – Version 39**
 
 Die App ist eine offlinefähige Web-App. Die aktuelle Version ist über GitHub Pages erreichbar:
 
