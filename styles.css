@@ -139,3 +139,6 @@ select option:disabled, select option.rolle-vergeben { color: #777; background-c
   .set-character { flex: 0 0 auto; }
   .character-thumb { width: 34px; height: 48px; }
 }
+
+/* Ein zentraler Zurück-Button für den letzten bestätigten Spielstand. */
+.checkpoint-back-row { margin-top: .75rem; }

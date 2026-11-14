@@ -34,6 +34,68 @@ export function spielstandLaden() {
     return false;
   }
 }
+
+const SPIELSTAND_VERSION_PREFIX = `${SPIELSTAND_SCHLUESSEL}-version-`;
+
+function spielstandVersionenAuflisten() {
+  if (typeof localStorage === "undefined") return [];
+  const versionen = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const schluessel = localStorage.key(i);
+    if (!schluessel?.startsWith(SPIELSTAND_VERSION_PREFIX)) continue;
+    const nummer = Number(schluessel.slice(SPIELSTAND_VERSION_PREFIX.length));
+    if (Number.isSafeInteger(nummer) && nummer > 0) versionen.push({ nummer, schluessel });
+  }
+  return versionen.sort((a, b) => a.nummer - b.nummer);
+}
+
+export function spielstandVersionierungZuruecksetzen() {
+  if (typeof localStorage === "undefined") return;
+  for (const version of spielstandVersionenAuflisten()) localStorage.removeItem(version.schluessel);
+}
+
+export function spielstandVersionSpeichern() {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    const versionen = spielstandVersionenAuflisten();
+    const nummer = (versionen.at(-1)?.nummer || 0) + 1;
+    const eintrag = { version: nummer, erstelltAm: new Date().toISOString(), zustand: JSON.parse(JSON.stringify(spielzustand)) };
+    localStorage.setItem(`${SPIELSTAND_VERSION_PREFIX}${String(nummer).padStart(8, "0")}`, JSON.stringify(eintrag));
+    return true;
+  } catch (fehler) {
+    console.warn("Der nummerierte Spielstand konnte nicht gespeichert werden:", fehler);
+    return false;
+  }
+}
+
+export function spielstandVersionZurueck() {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    const versionen = spielstandVersionenAuflisten();
+    // Auch ein einzelner gespeicherter Stand ist ein gültiger Rücksprungpunkt.
+    // Bei mehreren Ständen wird der unmittelbar vorherige geladen.
+    if (versionen.length < 1) return false;
+    const ziel = versionen.length >= 2 ? versionen[versionen.length - 2] : versionen[versionen.length - 1];
+    const gespeichert = localStorage.getItem(ziel.schluessel);
+    const eintrag = JSON.parse(gespeichert || "null");
+    if (!eintrag?.zustand || !Array.isArray(eintrag.zustand.spieler)) return false;
+    for (const key of Object.keys(spielzustand)) delete spielzustand[key];
+    Object.assign(spielzustand, eintrag.zustand);
+    for (const version of versionen) {
+      if (version.nummer > ziel.nummer) localStorage.removeItem(version.schluessel);
+    }
+    spielstandSpeichern();
+    return true;
+  } catch (fehler) {
+    console.warn("Der vorherige Spielstand konnte nicht wiederhergestellt werden:", fehler);
+    return false;
+  }
+}
+
+export function spielstandVersionenAnzahl() {
+  return spielstandVersionenAuflisten().length;
+}
+
 export const spielzustand = {
   spieler: [],
   hardcoreModus: false,

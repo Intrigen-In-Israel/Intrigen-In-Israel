@@ -20,7 +20,7 @@ export function spielVerteilenStarten() {
   spielzustand.protokoll = [];
   spielzustand.verliebenFreigegeben = true;
   spielzustand.jakobTauschInNacht = false;
-  spielzustand.spieler.forEach(p => { p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; p.istBuergermeister = false; });
+  spielzustand.spieler.forEach(p => { p.rolle = null; p.verliebtMit = []; p.istAmLeben = true; p.istBuergermeister = false; p.todesgrund = null; p.ausgeschlosseneRollen = []; p.rolleUnbekanntBestaetigt = false; });
   spielzustand.unbekannteZuordnungen = [];
   spielzustand.unbekannteSpieler = [];
   spielzustand.nachtAktionen = { todesfaelle: [] };
