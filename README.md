@@ -217,3 +217,13 @@ Die App ist für Smartphones, Tablets und Computer geeignet. Die Spieler benöti
 Die aktuelle Version ist über GitHub Pages erreichbar:
 
 [https://intrigen-in-israel.github.io/Intrigen-In-Israel/](https://intrigen-in-israel.github.io/Intrigen-In-Israel/)
+
+
+## Version 49 – 14.11.2026
+
+- Hinweise für Salomos ausgewählten Spieler ergänzt.
+- Bürgermeister-Schaltfläche und mehrere Beschriftungen präzisiert.
+- Bileams bereits verbrauchte Heilfähigkeit wird nun ebenfalls ausdrücklich angezeigt.
+- Simsons zweite Todesauswahl ist tatsächlich optional.
+- Die Anzeige der abgeschlossenen Nacht zählt bereits zur Tagphase.
+- Einschlafhinweis verständlicher formuliert.
